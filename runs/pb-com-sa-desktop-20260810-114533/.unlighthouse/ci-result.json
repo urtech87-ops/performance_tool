@@ -1,0 +1,1701 @@
+{
+  "summary": {
+    "score": 0.71,
+    "categories": {
+      "performance": {
+        "score": 0.54,
+        "scores": [
+          0.55,
+          0.48,
+          0.33,
+          0.57,
+          0.43,
+          0.49,
+          0.52,
+          0.52,
+          0.58,
+          0.6,
+          0.57,
+          0.6,
+          0.6,
+          0.6,
+          0.6,
+          0.59,
+          0.58,
+          0.59,
+          0.55,
+          0.59,
+          0.59,
+          0.59,
+          0.56,
+          0.56,
+          0.59,
+          0.58,
+          0.61,
+          0.56,
+          0.54
+        ],
+        "averageScore": 0.56
+      },
+      "accessibility": {
+        "score": 0.69,
+        "scores": [
+          0.84,
+          0.82,
+          0.82,
+          0.82,
+          0.75,
+          0.75,
+          0.83,
+          0.82,
+          0.82,
+          0.82,
+          0.87,
+          0.82,
+          0.82,
+          0.82,
+          0.82,
+          0.75,
+          0.82,
+          0.82,
+          0.75,
+          0.82,
+          0.82,
+          0.82,
+          0.75,
+          0.75,
+          0.82,
+          0.82,
+          0.82,
+          0.82,
+          0.69
+        ],
+        "averageScore": 0.8
+      },
+      "best-practices": {
+        "score": 1,
+        "scores": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "averageScore": 1
+      },
+      "seo": {
+        "score": 0.33,
+        "scores": [
+          0.42,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.33,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.42,
+          0.42,
+          0.5,
+          0.5,
+          0.5,
+          0.33,
+          0.5,
+          0.5,
+          0.5,
+          0.33,
+          0.33,
+          0.5,
+          0.5,
+          0.5,
+          0.5,
+          0.33
+        ],
+        "averageScore": 0.46
+      }
+    },
+    "metrics": {
+      "largest-contentful-paint": {
+        "numericValue": 4589.356400000001,
+        "displayValue": "4.6 s",
+        "numericValues": [
+          6644.083999999999,
+          6010.136,
+          35621.411999999975,
+          4442.2825,
+          4485.427,
+          8639.684000000001,
+          5801.8531,
+          8976.3115,
+          4436.260800000001,
+          3786.0004,
+          5062.9504,
+          3810.7856,
+          3793.3938,
+          3798.6812,
+          3798.9874999999993,
+          4210.411599999999,
+          4593.894999999999,
+          4248.92,
+          8798.3895,
+          4062.1600999999996,
+          4004.4002000000005,
+          4066.0608,
+          7300.009800000001,
+          6100.6008,
+          4114.0448000000015,
+          4449.774,
+          3491.0506000000005,
+          6989.686199999999,
+          4589.356400000001
+        ],
+        "averageNumericValue": 6211.28
+      },
+      "cumulative-layout-shift": {
+        "numericValue": 0.12855310896593997,
+        "displayValue": "0.129",
+        "numericValues": [
+          0.007092029485158918,
+          0.13764991032600765,
+          0.021547806088200103,
+          0.010431570279893762,
+          0.00508566341607565,
+          0.16111872245571032,
+          0.128871158392435,
+          0.0041751303155006855,
+          0.008084351851851853,
+          0.011554152949245541,
+          0.009809722222222223,
+          0.008089585048010974,
+          0.00982354938271605,
+          0.011554152949245541,
+          0.008073885459533608,
+          0.009096396240113241,
+          0.003721834705075446,
+          0.008084351851851853,
+          0.006338048696844993,
+          0.0034748182441700958,
+          0.0034748182441700958,
+          0.005083425925925926,
+          0.006338048696844993,
+          0.006345154320987654,
+          0.009809722222222223,
+          0.004824598765432099,
+          0.003088473936899863,
+          0.00394184499314129,
+          0.12855310896593997
+        ],
+        "averageNumericValue": 0.03
+      },
+      "first-contentful-paint": {
+        "numericValue": 3485.5173000000004,
+        "displayValue": "3.5 s",
+        "numericValues": [
+          3820.870999999999,
+          3808.217,
+          4028.328999999999,
+          3793.9615,
+          3825.5969999999998,
+          3493.7629999999995,
+          3499.5092,
+          3789.0165,
+          3502.1484,
+          3486.0004,
+          3495.9462999999996,
+          3510.7856,
+          3493.2686,
+          3498.501399999999,
+          3498.9542999999994,
+          3512.362799999999,
+          3497.8758999999995,
+          3503.8504999999996,
+          3494.9554999999996,
+          3494.0870999999997,
+          3854.3411999999994,
+          3494.2386,
+          3496.5686000000005,
+          3501.9506,
+          3497.265500000001,
+          3497.4407000000006,
+          3491.0506000000005,
+          3648.2144,
+          3485.5173000000004
+        ],
+        "averageNumericValue": 3586.71
+      },
+      "total-blocking-time": {
+        "numericValue": 6,
+        "displayValue": "10 ms",
+        "numericValues": [
+          88.99999999999909,
+          153.5,
+          540.9999999999991,
+          96.5,
+          353.5,
+          11,
+          13,
+          159.5,
+          6.5,
+          18,
+          4,
+          28,
+          12,
+          14.5,
+          18,
+          10.499999999999545,
+          9.5,
+          7,
+          36,
+          6.5,
+          0,
+          0,
+          1.5,
+          0,
+          1,
+          32,
+          3.5,
+          4.5,
+          6
+        ],
+        "averageNumericValue": 56.41
+      },
+      "max-potential-fid": {
+        "numericValue": 62,
+        "displayValue": "60 ms",
+        "numericValues": [
+          132.99999999999818,
+          138,
+          182.9999999999991,
+          107,
+          230,
+          60,
+          76,
+          145,
+          63,
+          63,
+          58,
+          88,
+          63,
+          73,
+          75,
+          59.99999999999909,
+          69,
+          64,
+          77,
+          61,
+          50,
+          45,
+          53,
+          49,
+          52,
+          84,
+          57,
+          58,
+          62
+        ],
+        "averageNumericValue": 82.62
+      },
+      "interactive": {
+        "numericValue": 8047.586830000002,
+        "displayValue": "8.0 s",
+        "numericValues": [
+          8772.083999999999,
+          8663.5396,
+          35751.787599999974,
+          8521.3552,
+          8464.828,
+          8639.684000000001,
+          8102.7291000000005,
+          9382.694325,
+          8015.864475,
+          7757.63694,
+          7788.158400000001,
+          8109.816809999998,
+          8092.4931,
+          7756.331899999999,
+          8083.203399999998,
+          8079.877769999999,
+          8234.9324,
+          8063.876799999998,
+          8798.389500000001,
+          8188.060299999999,
+          5897.836940000001,
+          4066.0608,
+          8048.583900000001,
+          6100.6008,
+          7738.075200000001,
+          8658.942780000001,
+          6624.780990000001,
+          8210.1698,
+          8047.586830000002
+        ],
+        "averageNumericValue": 8850.34
+      }
+    }
+  },
+  "routes": [
+    {
+      "path": "/",
+      "score": 0.7,
+      "categories": {
+        "performance": {
+          "score": 0.55
+        },
+        "accessibility": {
+          "score": 0.84
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.42
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6644.083999999999,
+          "displayValue": "6.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.007092029485158918,
+          "displayValue": "0.007"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3820.870999999999,
+          "displayValue": "3.8 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 88.99999999999909,
+          "displayValue": "90 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 132.99999999999818,
+          "displayValue": "130 ms"
+        },
+        "interactive": {
+          "numericValue": 8772.083999999999,
+          "displayValue": "8.8 s"
+        }
+      }
+    },
+    {
+      "path": "/about-us/",
+      "score": 0.7,
+      "categories": {
+        "performance": {
+          "score": 0.48
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6010.136,
+          "displayValue": "6.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.13764991032600765,
+          "displayValue": "0.138"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3808.217,
+          "displayValue": "3.8 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 153.5,
+          "displayValue": "150 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 138,
+          "displayValue": "140 ms"
+        },
+        "interactive": {
+          "numericValue": 8663.5396,
+          "displayValue": "8.7 s"
+        }
+      }
+    },
+    {
+      "path": "/careers/",
+      "score": 0.66,
+      "categories": {
+        "performance": {
+          "score": 0.33
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 35621.411999999975,
+          "displayValue": "35.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.021547806088200103,
+          "displayValue": "0.022"
+        },
+        "first-contentful-paint": {
+          "numericValue": 4028.328999999999,
+          "displayValue": "4.0 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 540.9999999999991,
+          "displayValue": "540 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 182.9999999999991,
+          "displayValue": "180 ms"
+        },
+        "interactive": {
+          "numericValue": 35751.787599999974,
+          "displayValue": "35.8 s"
+        }
+      }
+    },
+    {
+      "path": "/ceo-message/",
+      "score": 0.72,
+      "categories": {
+        "performance": {
+          "score": 0.57
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4442.2825,
+          "displayValue": "4.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.010431570279893762,
+          "displayValue": "0.01"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3793.9615,
+          "displayValue": "3.8 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 96.5,
+          "displayValue": "100 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 107,
+          "displayValue": "110 ms"
+        },
+        "interactive": {
+          "numericValue": 8521.3552,
+          "displayValue": "8.5 s"
+        }
+      }
+    },
+    {
+      "path": "/contact-us/",
+      "score": 0.67,
+      "categories": {
+        "performance": {
+          "score": 0.43
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4485.427,
+          "displayValue": "4.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.00508566341607565,
+          "displayValue": "0.005"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3825.5969999999998,
+          "displayValue": "3.8 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 353.5,
+          "displayValue": "350 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 230,
+          "displayValue": "230 ms"
+        },
+        "interactive": {
+          "numericValue": 8464.828,
+          "displayValue": "8.5 s"
+        }
+      }
+    },
+    {
+      "path": "/in-the-presence-agree.php/",
+      "score": 0.64,
+      "categories": {
+        "performance": {
+          "score": 0.49
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.33
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 8639.684000000001,
+          "displayValue": "8.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.16111872245571032,
+          "displayValue": "0.161"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3493.7629999999995,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 11,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 60,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 8639.684000000001,
+          "displayValue": "8.6 s"
+        }
+      }
+    },
+    {
+      "path": "/leadership/",
+      "score": 0.71,
+      "categories": {
+        "performance": {
+          "score": 0.52
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 5801.8531,
+          "displayValue": "5.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.128871158392435,
+          "displayValue": "0.129"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3499.5092,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 13,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 76,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 8102.7291000000005,
+          "displayValue": "8.1 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/",
+      "score": 0.71,
+      "categories": {
+        "performance": {
+          "score": 0.52
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 8976.3115,
+          "displayValue": "9.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.0041751303155006855,
+          "displayValue": "0.004"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3789.0165,
+          "displayValue": "3.8 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 159.5,
+          "displayValue": "160 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 145,
+          "displayValue": "150 ms"
+        },
+        "interactive": {
+          "numericValue": 9382.694325,
+          "displayValue": "9.4 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/news/awards-five-renewable-energy-projects-with-a-total-capacity-of-4-500-mw-for-round-six-projects-1/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.58
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4436.260800000001,
+          "displayValue": "4.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.008084351851851853,
+          "displayValue": "0.008"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3502.1484,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 6.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 63,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 8015.864475,
+          "displayValue": "8.0 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/news/opening-of-qualification-for-the-third-round-of-conventional-ipp-projects/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.6
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 3786.0004,
+          "displayValue": "3.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.011554152949245541,
+          "displayValue": "0.012"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3486.0004,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 18,
+          "displayValue": "20 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 63,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 7757.63694,
+          "displayValue": "7.8 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/news/principal-buyer-launches-qualification-for-12-000-mwh-second-group-of-battery-energy-storage-projects/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.57
+        },
+        "accessibility": {
+          "score": 0.87
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 5062.9504,
+          "displayValue": "5.1 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.009809722222222223,
+          "displayValue": "0.01"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3495.9462999999996,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 4,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 58,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 7788.158400000001,
+          "displayValue": "7.8 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/news/principal-buyer-signs-a-power-purchase-agreement/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.6
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 3810.7856,
+          "displayValue": "3.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.008089585048010974,
+          "displayValue": "0.008"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3510.7856,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 28,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 88,
+          "displayValue": "90 ms"
+        },
+        "interactive": {
+          "numericValue": 8109.816809999998,
+          "displayValue": "8.1 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/news/principal-buyer-wins-impact-energy-transition-organization-of-the-year-2025-award-2/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.6
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 3793.3938,
+          "displayValue": "3.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.00982354938271605,
+          "displayValue": "0.01"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3493.2686,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 12,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 63,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 8092.4931,
+          "displayValue": "8.1 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/news/qualified-applicants-list-for-the-second-group-of-battery-energy-storage-system-projects/",
+      "score": 0.71,
+      "categories": {
+        "performance": {
+          "score": 0.6
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.42
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 3798.6812,
+          "displayValue": "3.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.011554152949245541,
+          "displayValue": "0.012"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3498.501399999999,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 14.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 73,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 7756.331899999999,
+          "displayValue": "7.8 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/news/qualified-developers-for-round-7-solar-pv-and-wind-ipp-projects-2/",
+      "score": 0.71,
+      "categories": {
+        "performance": {
+          "score": 0.6
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.42
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 3798.9874999999993,
+          "displayValue": "3.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.008073885459533608,
+          "displayValue": "0.008"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3498.9542999999994,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 18,
+          "displayValue": "20 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 75,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 8083.203399999998,
+          "displayValue": "8.1 s"
+        }
+      }
+    },
+    {
+      "path": "/open-data/",
+      "score": 0.71,
+      "categories": {
+        "performance": {
+          "score": 0.59
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4210.411599999999,
+          "displayValue": "4.2 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.009096396240113241,
+          "displayValue": "0.009"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3512.362799999999,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 10.499999999999545,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 59.99999999999909,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 8079.877769999999,
+          "displayValue": "8.1 s"
+        }
+      }
+    },
+    {
+      "path": "/our-projects/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.58
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4593.894999999999,
+          "displayValue": "4.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.003721834705075446,
+          "displayValue": "0.004"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3497.8758999999995,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 9.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 69,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 8234.9324,
+          "displayValue": "8.2 s"
+        }
+      }
+    },
+    {
+      "path": "/principal-buyer-announces-the-rfq-release-for-round-7-solar-and-wind-projects-1/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.59
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4248.92,
+          "displayValue": "4.2 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.008084351851851853,
+          "displayValue": "0.008"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3503.8504999999996,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 7,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 64,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 8063.876799999998,
+          "displayValue": "8.1 s"
+        }
+      }
+    },
+    {
+      "path": "/principal-buyer-signs-a-power-purchase-agreement/",
+      "score": 0.66,
+      "categories": {
+        "performance": {
+          "score": 0.55
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.33
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 8798.3895,
+          "displayValue": "8.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.006338048696844993,
+          "displayValue": "0.006"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3494.9554999999996,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 36,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 77,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 8798.389500000001,
+          "displayValue": "8.8 s"
+        }
+      }
+    },
+    {
+      "path": "/privacy-notice/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.59
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4062.1600999999996,
+          "displayValue": "4.1 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.0034748182441700958,
+          "displayValue": "0.003"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3494.0870999999997,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 6.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 61,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 8188.060299999999,
+          "displayValue": "8.2 s"
+        }
+      }
+    },
+    {
+      "path": "/privacy-policy/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.59
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4004.4002000000005,
+          "displayValue": "4.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.0034748182441700958,
+          "displayValue": "0.003"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3854.3411999999994,
+          "displayValue": "3.9 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 0,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 50,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 5897.836940000001,
+          "displayValue": "5.9 s"
+        }
+      }
+    },
+    {
+      "path": "/renewable-projects/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.59
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4066.0608,
+          "displayValue": "4.1 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.005083425925925926,
+          "displayValue": "0.005"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3494.2386,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 0,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 45,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 4066.0608,
+          "displayValue": "4.1 s"
+        }
+      }
+    },
+    {
+      "path": "/signing-contracfor-agree.php/",
+      "score": 0.66,
+      "categories": {
+        "performance": {
+          "score": 0.56
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.33
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7300.009800000001,
+          "displayValue": "7.3 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.006338048696844993,
+          "displayValue": "0.006"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3496.5686000000005,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 1.5,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 53,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 8048.583900000001,
+          "displayValue": "8.0 s"
+        }
+      }
+    },
+    {
+      "path": "/sppc-signs-power-purchase-agree/",
+      "score": 0.66,
+      "categories": {
+        "performance": {
+          "score": 0.56
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.33
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6100.6008,
+          "displayValue": "6.1 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.006345154320987654,
+          "displayValue": "0.006"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3501.9506,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 0,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 49,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 6100.6008,
+          "displayValue": "6.1 s"
+        }
+      }
+    },
+    {
+      "path": "/the-principal-buyer-signed-power-purchase-agreements-for-seven-new-renewable-energy-projects/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.59
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4114.0448000000015,
+          "displayValue": "4.1 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.009809722222222223,
+          "displayValue": "0.01"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3497.265500000001,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 1,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 52,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 7738.075200000001,
+          "displayValue": "7.7 s"
+        }
+      }
+    },
+    {
+      "path": "/thermal-energy-projects/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.58
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4449.774,
+          "displayValue": "4.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.004824598765432099,
+          "displayValue": "0.005"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3497.4407000000006,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 32,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 84,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 8658.942780000001,
+          "displayValue": "8.7 s"
+        }
+      }
+    },
+    {
+      "path": "/vendors/",
+      "score": 0.73,
+      "categories": {
+        "performance": {
+          "score": 0.61
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 3491.0506000000005,
+          "displayValue": "3.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.003088473936899863,
+          "displayValue": "0.003"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3491.0506000000005,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 3.5,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 57,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 6624.780990000001,
+          "displayValue": "6.6 s"
+        }
+      }
+    },
+    {
+      "path": "/what-we-do/",
+      "score": 0.72,
+      "categories": {
+        "performance": {
+          "score": 0.56
+        },
+        "accessibility": {
+          "score": 0.82
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.5
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6989.686199999999,
+          "displayValue": "7.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.00394184499314129,
+          "displayValue": "0.004"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3648.2144,
+          "displayValue": "3.6 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 4.5,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 58,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 8210.1698,
+          "displayValue": "8.2 s"
+        }
+      }
+    },
+    {
+      "path": "/whistlblowing/",
+      "score": 0.64,
+      "categories": {
+        "performance": {
+          "score": 0.54
+        },
+        "accessibility": {
+          "score": 0.69
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.33
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 4589.356400000001,
+          "displayValue": "4.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.12855310896593997,
+          "displayValue": "0.129"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3485.5173000000004,
+          "displayValue": "3.5 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 6,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 62,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 8047.586830000002,
+          "displayValue": "8.0 s"
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "metrics": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint",
+        "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)",
+        "numericUnit": "millisecond"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls).",
+        "numericUnit": "unitless"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/).",
+        "numericUnit": "millisecond"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/).",
+        "numericUnit": "millisecond"
+      },
+      "max-potential-fid": {
+        "id": "max-potential-fid",
+        "title": "Max Potential First Input Delay",
+        "description": "The maximum potential First Input Delay that your users could experience is the duration of the longest task. [Learn more about the Maximum Potential First Input Delay metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-max-potential-fid/).",
+        "numericUnit": "millisecond"
+      },
+      "interactive": {
+        "id": "interactive",
+        "title": "Time to Interactive",
+        "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/).",
+        "numericUnit": "millisecond"
+      }
+    },
+    "categories": {
+      "performance": {
+        "id": "performance",
+        "title": "Performance"
+      },
+      "accessibility": {
+        "id": "accessibility",
+        "title": "Accessibility"
+      },
+      "best-practices": {
+        "id": "best-practices",
+        "title": "Best Practices"
+      },
+      "seo": {
+        "id": "seo",
+        "title": "SEO"
+      }
+    }
+  }
+}

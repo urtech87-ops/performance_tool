@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security Report - https://search.sheikhassim.com/</title>
+<style>
+  :root { --ink:#1c2430; --line:#e3e6ea; --bg:#f6f7f9; --card:#fff;
+           --crit:#b3122b; --high:#d6521f; --med:#b06f00; --low:#3b7dbf; --info:#5b6672; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; background:var(--bg); color:var(--ink); line-height:1.5; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:23px; margin:0 0 4px; }
+  .meta { color:#5b6672; font-size:13px; margin-bottom:16px; }
+  .stats { display:flex; gap:12px; margin:18px 0 28px; flex-wrap:wrap; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px; min-width:96px; text-align:center; }
+  .stat b { display:block; font-size:24px; }
+  .stat span { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:#5b6672; }
+  .stat.crit b { color:var(--crit); } .stat.high b { color:var(--high); }
+  .stat.med b { color:var(--med); } .stat.low b { color:var(--low); } .stat.info b { color:var(--info); }
+  .finding { background:var(--card); border:1px solid var(--line); border-left:5px solid var(--line); border-radius:10px; padding:14px 18px; margin:12px 0; }
+  .finding.crit { border-left-color:var(--crit); } .finding.high { border-left-color:var(--high); }
+  .finding.med { border-left-color:var(--med); } .finding.low { border-left-color:var(--low); } .finding.info { border-left-color:var(--info); }
+  .fh { display:flex; align-items:center; gap:10px; }
+  .sev { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:2px 9px; border-radius:20px; color:#fff; }
+  .sev.crit { background:var(--crit); } .sev.high { background:var(--high); }
+  .sev.med { background:var(--med); } .sev.low { background:var(--low); } .sev.info { background:var(--info); }
+  .ft { font-weight:600; font-size:15px; }
+  .scope { font-size:13px; color:#5b6672; margin:8px 0; }
+  .pages { margin:6px 0 0; padding-left:18px; font-size:12px; color:#5b6672; }
+  .rec { font-size:14px; margin-top:6px; }
+  .clean { color:#0a7d34; font-size:15px; }
+</style></head>
+<body><div class="wrap">
+  <h1>Security Report</h1>
+  <div class="meta">https://search.sheikhassim.com/ &middot; 2 of 2 page(s) analyzed &middot; Generated 2026-08-12 14:18</div>
+  <div class="meta">Certificate valid, expires in 67 day(s).</div>
+  <div class="stats"><div class="stat crit"><b>0</b><span>Critical</span></div><div class="stat high"><b>2</b><span>High</span></div><div class="stat med"><b>2</b><span>Medium</span></div><div class="stat low"><b>2</b><span>Low</span></div><div class="stat info"><b>0</b><span>Info</span></div></div>
+  <div class="finding high"><div class="fh"><span class="sev high">High</span><span class="ft">Missing HTTP Strict Transport Security (HSTS)</span></div><div class="scope">Affects all scanned pages<ul class="pages"><li>/</li><li>/bookmarks</li></ul></div><div class="rec"><b>Fix:</b> Add &#x27;Strict-Transport-Security: max-age=31536000; includeSubDomains; preload&#x27; on HTTPS responses so browsers refuse to connect over plain HTTP.</div></div>
+<div class="finding high"><div class="fh"><span class="sev high">High</span><span class="ft">Missing Content-Security-Policy</span></div><div class="scope">Affects all scanned pages<ul class="pages"><li>/</li><li>/bookmarks</li></ul></div><div class="rec"><b>Fix:</b> Define a Content-Security-Policy to control which scripts, styles and frames may load. Start in report-only mode, then enforce a restrictive policy (e.g. default-src &#x27;self&#x27;).</div></div>
+<div class="finding med"><div class="fh"><span class="sev med">Medium</span><span class="ft">No clickjacking protection</span></div><div class="scope">Affects all scanned pages<ul class="pages"><li>/</li><li>/bookmarks</li></ul></div><div class="rec"><b>Fix:</b> Add &#x27;X-Frame-Options: DENY&#x27; (or a CSP &#x27;frame-ancestors&#x27; directive) to stop the page being embedded in a malicious iframe.</div></div>
+<div class="finding med"><div class="fh"><span class="sev med">Medium</span><span class="ft">Missing X-Content-Type-Options</span></div><div class="scope">Affects all scanned pages<ul class="pages"><li>/</li><li>/bookmarks</li></ul></div><div class="rec"><b>Fix:</b> Add &#x27;X-Content-Type-Options: nosniff&#x27; so browsers don&#x27;t MIME-sniff responses into an unexpected content type.</div></div>
+<div class="finding low"><div class="fh"><span class="sev low">Low</span><span class="ft">Missing Referrer-Policy</span></div><div class="scope">Affects all scanned pages<ul class="pages"><li>/</li><li>/bookmarks</li></ul></div><div class="rec"><b>Fix:</b> Add &#x27;Referrer-Policy: strict-origin-when-cross-origin&#x27; to avoid leaking full URLs to third-party sites.</div></div>
+<div class="finding low"><div class="fh"><span class="sev low">Low</span><span class="ft">Missing Permissions-Policy</span></div><div class="scope">Affects all scanned pages<ul class="pages"><li>/</li><li>/bookmarks</li></ul></div><div class="rec"><b>Fix:</b> Add a &#x27;Permissions-Policy&#x27; header to disable powerful browser features (camera, geolocation, etc.) you don&#x27;t use.</div></div>
+  <p class="meta" style="margin-top:24px">Passive checks only (headers, cookies, TLS, redirects, mixed content). This is a first-pass triage, not a substitute for a full penetration test.</p>
+</div></body></html>

@@ -1,0 +1,4916 @@
+{
+  "lighthouseVersion": "13.4.1",
+  "requestedUrl": "https://search.sheikhassim.com/bookmarks",
+  "mainDocumentUrl": "https://search.sheikhassim.com/bookmarks",
+  "finalDisplayedUrl": "https://search.sheikhassim.com/bookmarks",
+  "finalUrl": "https://search.sheikhassim.com/bookmarks",
+  "fetchTime": "2026-08-12T09:15:25.569Z",
+  "gatherMode": "navigation",
+  "runWarnings": [],
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+  "environment": {
+    "networkUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+    "hostUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+    "benchmarkIndex": 2034.5,
+    "credits": {
+      "axe-core": "4.12.1"
+    }
+  },
+  "audits": {
+    "is-on-https": {
+      "id": "is-on-https",
+      "title": "Uses HTTPS",
+      "description": "All sites should be protected with HTTPS, even ones that don't handle sensitive data. This includes avoiding [mixed content](https://developers.google.com/web/fundamentals/security/prevent-mixed-content/what-is-mixed-content), where some resources are loaded over HTTP despite the initial request being served over HTTPS. HTTPS prevents intruders from tampering with or passively listening in on the communications between your app and your users, and is a prerequisite for HTTP/2 and many new web platform APIs. [Learn more about HTTPS](https://developer.chrome.com/docs/lighthouse/pwa/is-on-https/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "url",
+            "valueType": "url",
+            "label": "Insecure URL"
+          },
+          {
+            "key": "resolution",
+            "valueType": "text",
+            "label": "Request Resolution"
+          }
+        ],
+        "items": []
+      }
+    },
+    "redirects-http": {
+      "id": "redirects-http",
+      "title": "Redirects HTTP traffic to HTTPS",
+      "description": "Make sure that you redirect all HTTP traffic to HTTPS in order to enable secure web features for all your users. [Learn more](https://developer.chrome.com/docs/lighthouse/pwa/redirects-http/).",
+      "score": null,
+      "scoreDisplayMode": "notApplicable"
+    },
+    "errors-in-console": {
+      "id": "errors-in-console",
+      "title": "Browser errors were logged to the console",
+      "description": "Errors logged to the console indicate unresolved problems. They can come from network request failures and other browser concerns. [Learn more about this errors in console diagnostic audit](https://developer.chrome.com/docs/lighthouse/best-practices/errors-in-console/)",
+      "score": 0,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "sourceLocation",
+            "valueType": "source-location",
+            "label": "Source"
+          },
+          {
+            "key": "description",
+            "valueType": "code",
+            "label": "Description"
+          }
+        ],
+        "items": [
+          {
+            "source": "network",
+            "description": "Failed to load resource: the server responded with a status of 401 ()",
+            "sourceLocation": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/api/auth/me",
+              "urlProvider": "network",
+              "line": 0,
+              "column": 0
+            }
+          },
+          {
+            "source": "network",
+            "description": "Failed to load resource: the server responded with a status of 401 ()",
+            "sourceLocation": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/api/auth/me",
+              "urlProvider": "network",
+              "line": 0,
+              "column": 0
+            }
+          }
+        ]
+      }
+    },
+    "image-aspect-ratio": {
+      "id": "image-aspect-ratio",
+      "title": "Displays images with correct aspect ratio",
+      "description": "Image display dimensions should match natural aspect ratio. [Learn more about image aspect ratio](https://developer.chrome.com/docs/lighthouse/best-practices/image-aspect-ratio/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "node",
+            "valueType": "node",
+            "label": ""
+          },
+          {
+            "key": "url",
+            "valueType": "url",
+            "label": "URL"
+          },
+          {
+            "key": "displayedAspectRatio",
+            "valueType": "text",
+            "label": "Aspect Ratio (Displayed)"
+          },
+          {
+            "key": "actualAspectRatio",
+            "valueType": "text",
+            "label": "Aspect Ratio (Actual)"
+          }
+        ],
+        "items": []
+      }
+    },
+    "image-size-responsive": {
+      "id": "image-size-responsive",
+      "title": "Serves images with appropriate resolution",
+      "description": "Image natural dimensions should be proportional to the display size and the pixel ratio to maximize image clarity. [Learn how to provide responsive images](https://web.dev/articles/serve-responsive-images).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "node",
+            "valueType": "node",
+            "label": ""
+          },
+          {
+            "key": "url",
+            "valueType": "url",
+            "label": "URL"
+          },
+          {
+            "key": "displayedSize",
+            "valueType": "text",
+            "label": "Displayed size"
+          },
+          {
+            "key": "actualSize",
+            "valueType": "text",
+            "label": "Actual size"
+          },
+          {
+            "key": "expectedSize",
+            "valueType": "text",
+            "label": "Expected size"
+          }
+        ],
+        "items": []
+      }
+    },
+    "deprecations": {
+      "id": "deprecations",
+      "title": "Avoids deprecated APIs",
+      "description": "Deprecated APIs will eventually be removed from the browser. [Learn more about deprecated APIs](https://developer.chrome.com/docs/lighthouse/best-practices/deprecations/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "value",
+            "valueType": "text",
+            "label": "Deprecation / Warning"
+          },
+          {
+            "key": "source",
+            "valueType": "source-location",
+            "label": "Source"
+          }
+        ],
+        "items": []
+      }
+    },
+    "third-party-cookies": {
+      "id": "third-party-cookies",
+      "title": "Avoids third-party cookies",
+      "description": "Third-party cookies may be blocked in some contexts. [Learn more about preparing for third-party cookie restrictions](https://privacysandbox.google.com/cookies/prepare/overview).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "name",
+            "valueType": "text",
+            "label": "Name"
+          },
+          {
+            "key": "url",
+            "valueType": "url",
+            "label": "URL"
+          }
+        ],
+        "items": []
+      }
+    },
+    "valid-source-maps": {
+      "id": "valid-source-maps",
+      "title": "Page has valid source maps",
+      "description": "Source maps translate minified code to the original source code. This helps developers debug in production. In addition, Lighthouse is able to provide further insights. Consider deploying source maps to take advantage of these benefits. [Learn more about source maps](https://developer.chrome.com/docs/devtools/javascript/source-maps/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "scriptUrl",
+            "valueType": "url",
+            "subItemsHeading": {
+              "key": "error"
+            },
+            "label": "URL"
+          },
+          {
+            "key": "sourceMapUrl",
+            "valueType": "url",
+            "label": "Map URL"
+          }
+        ],
+        "items": []
+      }
+    },
+    "csp-xss": {
+      "id": "csp-xss",
+      "title": "Ensure CSP is effective against XSS attacks",
+      "description": "A strong Content Security Policy (CSP) significantly reduces the risk of cross-site scripting (XSS) attacks. [Learn how to use a CSP to prevent XSS](https://developer.chrome.com/docs/lighthouse/best-practices/csp-xss/)",
+      "score": 1,
+      "scoreDisplayMode": "informative",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "description",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "description"
+            },
+            "label": "Description"
+          },
+          {
+            "key": "directive",
+            "valueType": "code",
+            "subItemsHeading": {
+              "key": "directive"
+            },
+            "label": "Directive"
+          },
+          {
+            "key": "severity",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "severity"
+            },
+            "label": "Severity"
+          }
+        ],
+        "items": [
+          {
+            "severity": "High",
+            "description": "No CSP found in enforcement mode"
+          }
+        ]
+      }
+    },
+    "has-hsts": {
+      "id": "has-hsts",
+      "title": "Use a strong HSTS policy",
+      "description": "Deployment of the HSTS header significantly reduces the risk of downgrading HTTP connections and eavesdropping attacks. A rollout in stages, starting with a low max-age is recommended. [Learn more about using a strong HSTS policy.](https://developer.chrome.com/docs/lighthouse/best-practices/has-hsts)",
+      "score": 1,
+      "scoreDisplayMode": "informative",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "description",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "description"
+            },
+            "label": "Description"
+          },
+          {
+            "key": "directive",
+            "valueType": "code",
+            "subItemsHeading": {
+              "key": "directive"
+            },
+            "label": "Directive"
+          },
+          {
+            "key": "severity",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "severity"
+            },
+            "label": "Severity"
+          }
+        ],
+        "items": [
+          {
+            "severity": "High",
+            "description": "No HSTS header found"
+          }
+        ]
+      }
+    },
+    "origin-isolation": {
+      "id": "origin-isolation",
+      "title": "Ensure proper origin isolation with COOP",
+      "description": "The Cross-Origin-Opener-Policy (COOP) can be used to isolate the top-level window from other documents such as pop-ups. [Learn more about deploying the COOP header.](https://web.dev/articles/why-coop-coep#coop)",
+      "score": 1,
+      "scoreDisplayMode": "informative",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "description",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "description"
+            },
+            "label": "Description"
+          },
+          {
+            "key": "directive",
+            "valueType": "code",
+            "subItemsHeading": {
+              "key": "directive"
+            },
+            "label": "Directive"
+          },
+          {
+            "key": "severity",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "severity"
+            },
+            "label": "Severity"
+          }
+        ],
+        "items": [
+          {
+            "description": "No COOP header found",
+            "severity": "High"
+          }
+        ]
+      }
+    },
+    "clickjacking-mitigation": {
+      "id": "clickjacking-mitigation",
+      "title": "Mitigate clickjacking with XFO or CSP",
+      "description": "The `X-Frame-Options` (XFO) header or the `frame-ancestors` directive in the `Content-Security-Policy` (CSP) header control where a page can be embedded. These can mitigate clickjacking attacks by blocking some or all sites from embedding the page. [Learn more about mitigating clickjacking](https://developer.chrome.com/docs/lighthouse/best-practices/clickjacking-mitigation).",
+      "score": 1,
+      "scoreDisplayMode": "informative",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "description",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "description"
+            },
+            "label": "Description"
+          },
+          {
+            "key": "severity",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "severity"
+            },
+            "label": "Severity"
+          }
+        ],
+        "items": [
+          {
+            "severity": "High",
+            "description": "No frame control policy found"
+          }
+        ]
+      }
+    },
+    "trusted-types-xss": {
+      "id": "trusted-types-xss",
+      "title": "Mitigate DOM-based XSS with Trusted Types",
+      "description": "The `require-trusted-types-for` directive in the `Content-Security-Policy` (CSP) header instructs user agents to control the data passed to DOM XSS sink functions. [Learn more about mitigating DOM-based XSS with Trusted Types](https://developer.chrome.com/docs/lighthouse/best-practices/trusted-types-xss).",
+      "score": 1,
+      "scoreDisplayMode": "informative",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "description",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "description"
+            },
+            "label": "Description"
+          },
+          {
+            "key": "severity",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "severity"
+            },
+            "label": "Severity"
+          }
+        ],
+        "items": [
+          {
+            "severity": "High",
+            "description": "No `Content-Security-Policy` header with Trusted Types directive found"
+          }
+        ]
+      }
+    },
+    "document-title": {
+      "id": "document-title",
+      "title": "Document has a `<title>` element",
+      "description": "The title gives screen reader users an overview of the page, and search engine users rely on it heavily to determine if a page is relevant to their search. [Learn more about document titles](https://dequeuniversity.com/rules/axe/4.12/document-title).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "node",
+            "valueType": "node",
+            "subItemsHeading": {
+              "key": "relatedNode",
+              "valueType": "node"
+            },
+            "label": "Failing Elements"
+          }
+        ],
+        "items": []
+      }
+    },
+    "image-alt": {
+      "id": "image-alt",
+      "title": "Image elements have `[alt]` attributes",
+      "description": "Informative elements should aim for short, descriptive alternate text. Decorative elements can be ignored with an empty alt attribute. [Learn more about the `alt` attribute](https://dequeuniversity.com/rules/axe/4.12/image-alt).",
+      "score": null,
+      "scoreDisplayMode": "notApplicable"
+    },
+    "doctype": {
+      "id": "doctype",
+      "title": "Page has the HTML doctype",
+      "description": "Specifying a doctype prevents the browser from switching to quirks-mode. [Learn more about the doctype declaration](https://developer.chrome.com/docs/lighthouse/best-practices/doctype/).",
+      "score": 1,
+      "scoreDisplayMode": "binary"
+    },
+    "charset": {
+      "id": "charset",
+      "title": "Properly defines charset",
+      "description": "A character encoding declaration is required. It can be done with a `<meta>` tag in the first 1024 bytes of the HTML or in the Content-Type HTTP response header. [Learn more about declaring the character encoding](https://developer.chrome.com/docs/lighthouse/best-practices/charset/).",
+      "score": 1,
+      "scoreDisplayMode": "binary"
+    },
+    "geolocation-on-start": {
+      "id": "geolocation-on-start",
+      "title": "Avoids requesting the geolocation permission on page load",
+      "description": "Users are mistrustful of or confused by sites that request their location without context. Consider tying the request to a user action instead. [Learn more about the geolocation permission](https://developer.chrome.com/docs/lighthouse/best-practices/geolocation-on-start/). Also consider using the [`<geolocation>` element](https://developer.chrome.com/blog/geolocation-html-element).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "source",
+            "valueType": "source-location",
+            "label": "Source"
+          }
+        ],
+        "items": []
+      }
+    },
+    "inspector-issues": {
+      "id": "inspector-issues",
+      "title": "No issues in the `Issues` panel in Chrome Devtools",
+      "description": "Issues logged to the `Issues` panel in Chrome Devtools indicate unresolved problems. They can come from network request failures, insufficient security controls, and other browser concerns. Open up the Issues panel in Chrome DevTools for more details on each issue.",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "issueType",
+            "valueType": "text",
+            "subItemsHeading": {
+              "key": "url",
+              "valueType": "url"
+            },
+            "label": "Issue type"
+          }
+        ],
+        "items": []
+      }
+    },
+    "js-libraries": {
+      "id": "js-libraries",
+      "title": "Detected JavaScript libraries",
+      "description": "All front-end JavaScript libraries detected on the page. [Learn more about this JavaScript library detection diagnostic audit](https://developer.chrome.com/docs/lighthouse/best-practices/js-libraries/).",
+      "score": null,
+      "scoreDisplayMode": "notApplicable"
+    },
+    "notification-on-start": {
+      "id": "notification-on-start",
+      "title": "Avoids requesting the notification permission on page load",
+      "description": "Users are mistrustful of or confused by sites that request to send notifications without context. Consider tying the request to user gestures instead. [Learn more about responsibly getting permission for notifications](https://developer.chrome.com/docs/lighthouse/best-practices/notification-on-start/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "source",
+            "valueType": "source-location",
+            "label": "Source"
+          }
+        ],
+        "items": []
+      }
+    },
+    "paste-preventing-inputs": {
+      "id": "paste-preventing-inputs",
+      "title": "Allows users to paste into input fields",
+      "description": "Preventing input pasting is a bad practice for the UX, and weakens security by blocking password managers.[Learn more about user-friendly input fields](https://developer.chrome.com/docs/lighthouse/best-practices/paste-preventing-inputs/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "node",
+            "valueType": "node",
+            "label": "Failing Elements"
+          }
+        ],
+        "items": []
+      }
+    },
+    "baseline": {
+      "id": "baseline",
+      "title": "Baseline Features",
+      "description": "Lists web features used on the page and their Baseline status as of 2026-07-15. [Learn more about Baseline](https://webstatus.dev/).",
+      "score": 1,
+      "scoreDisplayMode": "informative",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "featureId",
+            "valueType": "link",
+            "label": "Web-features"
+          },
+          {
+            "key": "displayStatus",
+            "valueType": "baseline-status",
+            "label": "Baseline Status"
+          },
+          {
+            "key": "source",
+            "valueType": "source-location",
+            "label": "Source"
+          }
+        ],
+        "items": [
+          {
+            "featureId": {
+              "type": "link",
+              "text": "app-shortcuts",
+              "url": "https://webstatus.dev/features/app-shortcuts"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "limited",
+              "displayString": "Limited Availability"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "manifest",
+              "url": "https://webstatus.dev/features/manifest"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "limited",
+              "displayString": "Limited Availability"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "long-animation-frames",
+              "url": "https://webstatus.dev/features/long-animation-frames"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "limited",
+              "displayString": "Limited Availability"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496",
+              "urlProvider": "network",
+              "line": 0,
+              "column": 2023
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "requestidlecallback",
+              "url": "https://webstatus.dev/features/requestidlecallback"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "limited",
+              "displayString": "Limited Availability"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "_lighthouse-eval.js",
+              "urlProvider": "network",
+              "line": 30,
+              "column": 11
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "layout-instability",
+              "url": "https://webstatus.dev/features/layout-instability"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "limited",
+              "displayString": "Limited Availability"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496",
+              "urlProvider": "network",
+              "line": 0,
+              "column": 2023
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "beforeinstallprompt",
+              "url": "https://webstatus.dev/features/beforeinstallprompt"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "limited",
+              "displayString": "Limited Availability"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "zstd",
+              "url": "https://webstatus.dev/features/zstd"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "low",
+              "displayString": "Newly Available (2026-02-11)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "http3",
+              "url": "https://webstatus.dev/features/http3"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "low",
+              "displayString": "Newly Available (2024-09-16)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "color-scheme",
+              "url": "https://webstatus.dev/features/color-scheme"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2022-02-03)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "aspect-ratio",
+              "url": "https://webstatus.dev/features/aspect-ratio"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2021-09-20)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "not",
+              "url": "https://webstatus.dev/features/not"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2021-01-21)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "nullish-coalescing",
+              "url": "https://webstatus.dev/features/nullish-coalescing"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2020-09-16)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": 0,
+              "column": 0
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "slot",
+              "url": "https://webstatus.dev/features/slot"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2020-01-15)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "intersection-observer",
+              "url": "https://webstatus.dev/features/intersection-observer"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2019-03-25)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/miniplayer.js",
+              "urlProvider": "network",
+              "line": 317,
+              "column": 13
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "js-modules",
+              "url": "https://webstatus.dev/features/js-modules"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2018-05-09)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "grid",
+              "url": "https://webstatus.dev/features/grid"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2017-10-17)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "template",
+              "url": "https://webstatus.dev/features/template"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2015-11-12)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          },
+          {
+            "featureId": {
+              "type": "link",
+              "text": "flexbox",
+              "url": "https://webstatus.dev/features/flexbox"
+            },
+            "displayStatus": {
+              "type": "baseline-status",
+              "status": "high",
+              "displayString": "Widely Available (2015-09-30)"
+            },
+            "source": {
+              "type": "source-location",
+              "url": "https://search.sheikhassim.com/bookmarks",
+              "urlProvider": "network",
+              "line": -2,
+              "column": -2
+            }
+          }
+        ]
+      }
+    },
+    "meta-description": {
+      "id": "meta-description",
+      "title": "Document does not have a meta description",
+      "description": "Meta descriptions may be included in search results to concisely summarize page content. [Learn more about the meta description](https://developer.chrome.com/docs/lighthouse/seo/meta-description/).",
+      "score": 0,
+      "scoreDisplayMode": "binary"
+    },
+    "http-status-code": {
+      "id": "http-status-code",
+      "title": "Page has successful HTTP status code",
+      "description": "Pages with unsuccessful HTTP status codes may not be indexed properly. [Learn more about HTTP status codes](https://developer.chrome.com/docs/lighthouse/seo/http-status-code/).",
+      "score": 1,
+      "scoreDisplayMode": "binary"
+    },
+    "link-text": {
+      "id": "link-text",
+      "title": "Links have descriptive text",
+      "description": "Descriptive link text helps search engines understand your content. [Learn how to make links more accessible](https://developer.chrome.com/docs/lighthouse/seo/link-text/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "href",
+            "valueType": "url",
+            "label": "Link destination"
+          },
+          {
+            "key": "text",
+            "valueType": "text",
+            "label": "Link Text"
+          }
+        ],
+        "items": []
+      }
+    },
+    "crawlable-anchors": {
+      "id": "crawlable-anchors",
+      "title": "Links are crawlable",
+      "description": "Search engines may use `href` attributes on links to crawl websites. Ensure that the `href` attribute of anchor elements links to an appropriate destination, so more pages of the site can be discovered. [Learn how to make links crawlable](https://support.google.com/webmasters/answer/9112205)",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "node",
+            "valueType": "node",
+            "label": "Uncrawlable Link"
+          }
+        ],
+        "items": []
+      }
+    },
+    "is-crawlable": {
+      "id": "is-crawlable",
+      "title": "Page isn’t blocked from indexing",
+      "description": "Search engines are unable to include your pages in search results if they don't have permission to crawl them. [Learn more about crawler directives](https://developer.chrome.com/docs/lighthouse/seo/is-crawlable/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "warnings": [],
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "source",
+            "valueType": "code",
+            "label": "Blocking Directive Source"
+          }
+        ],
+        "items": []
+      }
+    },
+    "robots-txt": {
+      "id": "robots-txt",
+      "title": "robots.txt is not valid",
+      "description": "If your robots.txt file is malformed, crawlers may not be able to understand how you want your website to be crawled or indexed. [Learn more about robots.txt](https://developer.chrome.com/docs/lighthouse/seo/invalid-robots-txt/).",
+      "score": 0,
+      "scoreDisplayMode": "binary",
+      "displayValue": "423 errors found",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "index",
+            "valueType": "text",
+            "label": "Line #"
+          },
+          {
+            "key": "line",
+            "valueType": "code",
+            "label": "Content"
+          },
+          {
+            "key": "message",
+            "valueType": "code",
+            "label": "Error"
+          }
+        ],
+        "items": [
+          {
+            "index": "62",
+            "line": "<!DOCTYPE html>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "63",
+            "line": "<html lang=\"en\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "65",
+            "line": "<head>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "66",
+            "line": "  <meta charset=\"UTF-8\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "67",
+            "line": "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "68",
+            "line": "  <meta http-equiv=\"Cache-Control\" content=\"no-cache, no-store, must-revalidate\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "69",
+            "line": "  <meta http-equiv=\"Pragma\" content=\"no-cache\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "70",
+            "line": "  <meta http-equiv=\"Expires\" content=\"0\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "71",
+            "line": "  <title>Sheikh Assim Al-Hakeem Search</title>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "72",
+            "line": "  <link rel=\"icon\" type=\"image/svg+xml\" href=\"favicon.svg\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "73",
+            "line": "  <link rel=\"icon\" type=\"image/png\" sizes=\"96x96\" href=\"favicon-96x96.png\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "74",
+            "line": "  <link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"apple-touch-icon.png\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "75",
+            "line": "  <link rel=\"manifest\" href=\"manifest.json\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "76",
+            "line": "  <meta name=\"theme-color\" content=\"#0f172a\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "77",
+            "line": "  <meta name=\"apple-mobile-web-app-capable\" content=\"yes\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "78",
+            "line": "  <meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "79",
+            "line": "  <meta name=\"apple-mobile-web-app-title\" content=\"Sheikh Assim Search\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "80",
+            "line": "  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "81",
+            "line": "  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "82",
+            "line": "  <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap\" rel=\"stylesheet\" />",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "83",
+            "line": "  <link rel=\"stylesheet\" href=\"styles.css?v=3\" media=\"all\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "84",
+            "line": "  <script src=\"theme.js\"></script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "85",
+            "line": "  <script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "86",
+            "line": "    // Force CSS reload on navigation to prevent caching issues",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "87",
+            "line": "    if (document.readyState === 'loading') {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "88",
+            "line": "      document.addEventListener('DOMContentLoaded', function () {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "89",
+            "line": "        const links = document.querySelectorAll('link[rel=\"stylesheet\"]');",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "90",
+            "line": "        links.forEach(function (link) {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "91",
+            "line": "          if (link.href.includes('styles.css')) {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "92",
+            "line": "            const href = link.href.split('?')[0];",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "93",
+            "line": "            link.href = href + '?v=3&t=' + Date.now();",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "94",
+            "line": "          }",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "95",
+            "line": "        });",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "96",
+            "line": "      });",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "97",
+            "line": "    }",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "98",
+            "line": "  </script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "99",
+            "line": "</head>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "101",
+            "line": "<body>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "102",
+            "line": "  <header>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "103",
+            "line": "    <div class=\"container\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "104",
+            "line": "      <div class=\"header-content\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "105",
+            "line": "        <div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "106",
+            "line": "          <h1><a href=\"/\" style=\"color: inherit; text-decoration: none; cursor: pointer;\">Sheikh Assim Al-Hakeem</a>",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "107",
+            "line": "          </h1>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "108",
+            "line": "          <p>Search across Q&amp;A / Videos from <a href=\"https://www.assimalhakeem.net\" target=\"_blank\"",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "109",
+            "line": "              rel=\"noopener noreferrer\" class=\"home-link\">🏠 assimalhakeem.net</a></p>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "110",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "111",
+            "line": "        <div class=\"header-actions\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "112",
+            "line": "          <a href=\"/\" class=\"icon-btn active\" aria-label=\"Search\" title=\"Search\">🔍</a>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "113",
+            "line": "          <a href=\"/bookmarks\" class=\"icon-btn\" aria-label=\"Bookmarks\" title=\"Bookmarks\">❤️</a>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "114",
+            "line": "          <button id=\"themeToggle\" class=\"icon-btn\" aria-label=\"Toggle theme\" title=\"Toggle theme\">☀️</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "115",
+            "line": "          <div class=\"user-menu\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "116",
+            "line": "            <button id=\"userBtn\" class=\"icon-btn\" aria-label=\"User menu\" title=\"User menu\">👤</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "117",
+            "line": "            <div id=\"userDropdown\" class=\"dropdown-menu\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "118",
+            "line": "              <div id=\"userInfo\" class=\"dropdown-item\" hidden></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "119",
+            "line": "              <button id=\"loginBtn\" class=\"dropdown-item\">Login</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "120",
+            "line": "              <button id=\"registerBtn\" class=\"dropdown-item\">Register</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "121",
+            "line": "              <div id=\"userActions\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "122",
+            "line": "                <button id=\"apiTokenBtn\" class=\"dropdown-item\">API Token</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "123",
+            "line": "                <button id=\"apiDocsBtn\" class=\"dropdown-item\">API Docs</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "124",
+            "line": "                <button id=\"logoutBtn\" class=\"dropdown-item\">Logout</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "125",
+            "line": "              </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "126",
+            "line": "              <div class=\"dropdown-divider\"></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "127",
+            "line": "              <label class=\"dropdown-toggle-item\" for=\"pipToggle\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "128",
+            "line": "                <span>Mini Player</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "129",
+            "line": "                <input type=\"checkbox\" id=\"pipToggle\" checked />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "130",
+            "line": "                <span class=\"toggle-switch\"></span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "131",
+            "line": "              </label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "132",
+            "line": "            </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "133",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "134",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "135",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "136",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "137",
+            "line": "  </header>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "139",
+            "line": "  <main class=\"container\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "140",
+            "line": "    <section class=\"controls\" aria-label=\"Search filters\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "141",
+            "line": "      <div class=\"control search-wrapper\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "142",
+            "line": "        <label for=\"search\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "143",
+            "line": "          <span class=\"search-label-main\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "144",
+            "line": "            <span class=\"ai-badge\">AI Search</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "145",
+            "line": "          </span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "146",
+            "line": "          <span class=\"search-label-hint\">Powered by semantic understanding · Ask naturally for best results</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "147",
+            "line": "        </label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "148",
+            "line": "        <div class=\"search-input-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "149",
+            "line": "          <button id=\"clearSearch\" type=\"button\" class=\"clear-btn\" aria-label=\"Clear search\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "150",
+            "line": "            title=\"Clear search and show all questions\" hidden>Clear</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "151",
+            "line": "          <input id=\"search\" type=\"search\" placeholder=\"Ask in your own words or search by ID (e.g., #65974)\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "152",
+            "line": "            autocomplete=\"off\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "153",
+            "line": "          <button id=\"searchBtn\" type=\"button\" class=\"search-btn\" aria-label=\"Search\" title=\"Search\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "154",
+            "line": "            <span class=\"search-btn-icon\">🔍</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "155",
+            "line": "            <span class=\"search-btn-text\">Search</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "156",
+            "line": "          </button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "157",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "158",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "160",
+            "line": "      <button id=\"filtersToggle\" class=\"filters-toggle\" type=\"button\" aria-expanded=\"false\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "161",
+            "line": "        <span class=\"filters-toggle-text\">Filters</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "162",
+            "line": "        <span class=\"filters-toggle-icon\">▼</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "163",
+            "line": "      </button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "165",
+            "line": "      <div id=\"filtersPanel\" class=\"filters-panel\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "166",
+            "line": "        <div class=\"control\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "167",
+            "line": "          <label for=\"typeFilter\">Type</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "168",
+            "line": "          <select id=\"typeFilter\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "169",
+            "line": "            <option value=\"all\">All</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "170",
+            "line": "            <option value=\"qa\">Q&A</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "171",
+            "line": "            <option value=\"video\">Videos</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "172",
+            "line": "          </select>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "173",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "174",
+            "line": "        <div class=\"control\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "175",
+            "line": "          <label for=\"categoryFilter\">Category</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "176",
+            "line": "          <select id=\"categoryFilter\"></select>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "177",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "178",
+            "line": "        <div class=\"control\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "179",
+            "line": "          <label for=\"yearFilter\">Year</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "180",
+            "line": "          <select id=\"yearFilter\"></select>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "181",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "182",
+            "line": "        <div class=\"control\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "183",
+            "line": "          <label for=\"sortOrder\">Sort</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "184",
+            "line": "          <select id=\"sortOrder\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "185",
+            "line": "            <option value=\"newest\">Newest first</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "186",
+            "line": "            <option value=\"oldest\">Oldest first</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "187",
+            "line": "            <option value=\"title\">Title A→Z</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "188",
+            "line": "          </select>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "189",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "190",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "191",
+            "line": "    </section>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "193",
+            "line": "    <section id=\"stats\" aria-live=\"polite\"></section>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "194",
+            "line": "    <section id=\"results\" aria-live=\"polite\"></section>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "195",
+            "line": "    <nav id=\"pagination\" aria-label=\"Pagination\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "196",
+            "line": "      <button id=\"prevPage\" type=\"button\" class=\"page-btn\" disabled>Previous</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "197",
+            "line": "      <span id=\"pageInfo\" class=\"page-info\"></span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "198",
+            "line": "      <button id=\"nextPage\" type=\"button\" class=\"page-btn\">Next</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "199",
+            "line": "    </nav>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "200",
+            "line": "  </main>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "202",
+            "line": "  <!-- Login Modal -->",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "203",
+            "line": "  <div id=\"loginModal\" class=\"modal\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "204",
+            "line": "    <div class=\"modal-content modal-small\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "205",
+            "line": "      <div class=\"modal-header\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "206",
+            "line": "        <h3>Login</h3>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "207",
+            "line": "        <button class=\"modal-close\" type=\"button\" aria-label=\"Close\">&times;</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "208",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "209",
+            "line": "      <div class=\"modal-body\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "210",
+            "line": "        <form id=\"loginForm\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "211",
+            "line": "          <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "212",
+            "line": "            <label for=\"loginUsername\">Username</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "213",
+            "line": "            <input type=\"text\" id=\"loginUsername\" required autocomplete=\"username\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "214",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "215",
+            "line": "          <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "216",
+            "line": "            <label for=\"loginPassword\">Password</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "217",
+            "line": "            <input type=\"password\" id=\"loginPassword\" required autocomplete=\"current-password\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "218",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "219",
+            "line": "          <div id=\"loginError\" class=\"error-message\" hidden></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "220",
+            "line": "          <button type=\"submit\" class=\"btn-primary\">Login</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "221",
+            "line": "        </form>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "222",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "223",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "224",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "226",
+            "line": "  <!-- Register Modal -->",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "227",
+            "line": "  <div id=\"registerModal\" class=\"modal\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "228",
+            "line": "    <div class=\"modal-content modal-small\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "229",
+            "line": "      <div class=\"modal-header\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "230",
+            "line": "        <h3>Register</h3>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "231",
+            "line": "        <button class=\"modal-close\" type=\"button\" aria-label=\"Close\">&times;</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "232",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "233",
+            "line": "      <div class=\"modal-body\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "234",
+            "line": "        <form id=\"registerForm\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "235",
+            "line": "          <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "236",
+            "line": "            <label for=\"registerUsername\">Username</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "237",
+            "line": "            <input type=\"text\" id=\"registerUsername\" required autocomplete=\"username\" minlength=\"3\" maxlength=\"20\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "238",
+            "line": "            <small>3-20 characters</small>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "239",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "240",
+            "line": "          <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "241",
+            "line": "            <label for=\"registerPassword\">Password</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "242",
+            "line": "            <input type=\"password\" id=\"registerPassword\" required autocomplete=\"new-password\" minlength=\"6\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "243",
+            "line": "            <small>At least 6 characters</small>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "244",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "245",
+            "line": "          <div id=\"registerError\" class=\"error-message\" hidden></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "246",
+            "line": "          <button type=\"submit\" class=\"btn-primary\">Register</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "247",
+            "line": "        </form>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "248",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "249",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "250",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "252",
+            "line": "  <!-- API Token Modal -->",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "253",
+            "line": "  <div id=\"apiTokenModal\" class=\"modal\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "254",
+            "line": "    <div class=\"modal-content modal-small\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "255",
+            "line": "      <div class=\"modal-header\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "256",
+            "line": "        <h3>API Token</h3>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "257",
+            "line": "        <button class=\"modal-close\" type=\"button\" aria-label=\"Close\">&times;</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "258",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "259",
+            "line": "      <div class=\"modal-body\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "260",
+            "line": "        <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "261",
+            "line": "          <label>Your API Token</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "262",
+            "line": "          <div class=\"token-display\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "263",
+            "line": "            <input type=\"text\" id=\"apiTokenInput\" readonly />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "264",
+            "line": "            <button id=\"copyTokenBtn\" class=\"btn-secondary\" type=\"button\">Copy</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "265",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "266",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "267",
+            "line": "        <div class=\"token-actions\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "268",
+            "line": "          <button id=\"generateTokenBtn\" class=\"btn-secondary\" type=\"button\" style=\"width: 100%;\">Generate</button>",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "269",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "270",
+            "line": "        <div id=\"tokenStatus\" class=\"status-message\" hidden></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "271",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "272",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "273",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "275",
+            "line": "  <div id=\"askSheikhModal\" class=\"modal\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "276",
+            "line": "    <div class=\"modal-content modal-large\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "277",
+            "line": "      <div class=\"modal-header\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "278",
+            "line": "        <h3>Submit Your Question</h3>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "279",
+            "line": "        <button class=\"modal-close\" type=\"button\" aria-label=\"Close\">&times;</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "280",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "281",
+            "line": "      <div class=\"modal-body\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "282",
+            "line": "        <iframe",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "283",
+            "line": "          src=\"https://docs.google.com/forms/d/e/1FAIpQLSfR1ZFnYiJOrJ9dnbgkjQnSwQUDArA5Go1nMRZ7O13kjG_aOQ/closedform?embedded=true\"",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "284",
+            "line": "          width=\"100%\" height=\"640\" frameborder=\"0\" marginheight=\"0\" marginwidth=\"0\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "285",
+            "line": "          title=\"Ask Sheikh Assim form\">Loading…</iframe>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "286",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "287",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "288",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "290",
+            "line": "  <div id=\"bookSessionModal\" class=\"modal\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "291",
+            "line": "    <div class=\"modal-content modal-large\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "292",
+            "line": "      <div class=\"modal-header\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "293",
+            "line": "        <h3>Book a Live Counselling Session</h3>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "294",
+            "line": "        <button class=\"modal-close\" type=\"button\" aria-label=\"Close\">&times;</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "295",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "296",
+            "line": "      <div class=\"modal-body\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "297",
+            "line": "        <p>For booking of live counselling sessions, send us email or fill the form below and we will prefill an email",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "298",
+            "line": "          for you.<br>✉️ <a href=\"mailto:sheikhassim.bookings@gmail.com\">sheikhassim.bookings@gmail.com</a></p>",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "299",
+            "line": "        <form id=\"bookSessionForm\" class=\"booking-form\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "300",
+            "line": "          <div class=\"form-grid\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "301",
+            "line": "            <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "302",
+            "line": "              <label for=\"bookingFirstName\">First Name</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "303",
+            "line": "              <input type=\"text\" id=\"bookingFirstName\" required />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "304",
+            "line": "            </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "305",
+            "line": "            <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "306",
+            "line": "              <label for=\"bookingLastName\">Last Name</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "307",
+            "line": "              <input type=\"text\" id=\"bookingLastName\" required />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "308",
+            "line": "            </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "309",
+            "line": "            <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "310",
+            "line": "              <label for=\"bookingEmail\">Email Address</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "311",
+            "line": "              <input type=\"email\" id=\"bookingEmail\" required />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "312",
+            "line": "            </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "313",
+            "line": "            <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "314",
+            "line": "              <label for=\"bookingDate\">Preferred Date</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "315",
+            "line": "              <input type=\"date\" id=\"bookingDate\" required />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "316",
+            "line": "            </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "317",
+            "line": "            <div class=\"form-group full-width\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "318",
+            "line": "              <label for=\"bookingTime\">Preferred Time Slot</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "319",
+            "line": "              <select id=\"bookingTime\" required>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "320",
+            "line": "                <option value=\"\">Select a slot</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "321",
+            "line": "                <option>1pm to 2pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "322",
+            "line": "                <option>2pm to 3pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "323",
+            "line": "                <option>3pm to 4pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "324",
+            "line": "                <option>4pm to 5pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "325",
+            "line": "                <option>5pm to 6pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "326",
+            "line": "                <option>6pm to 7pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "327",
+            "line": "                <option>7pm to 8pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "328",
+            "line": "                <option>8pm to 9pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "329",
+            "line": "                <option>9pm to 10pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "330",
+            "line": "                <option>10pm to 11pm</option>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "331",
+            "line": "              </select>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "332",
+            "line": "            </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "333",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "334",
+            "line": "          <button type=\"submit\" class=\"btn-primary\" style=\"width: 100%; margin-top: 1rem;\">Prepare Email</button>",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "335",
+            "line": "        </form>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "336",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "337",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "338",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "340",
+            "line": "  <div id=\"shareModal\" class=\"modal\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "341",
+            "line": "    <div class=\"modal-content\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "342",
+            "line": "      <div class=\"modal-header\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "343",
+            "line": "        <h3>Share Q&amp;A</h3>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "344",
+            "line": "        <button class=\"modal-close\" type=\"button\" aria-label=\"Close share dialog\">&times;</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "345",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "346",
+            "line": "      <div class=\"modal-body\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "347",
+            "line": "        <div class=\"share-id-display\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "348",
+            "line": "          <span class=\"share-id-label\">Entry ID:</span>",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "349",
+            "line": "          <span id=\"shareItemId\" class=\"share-id-value\"></span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "350",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "351",
+            "line": "        <div class=\"share-options\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "352",
+            "line": "          <button class=\"share-option\" data-type=\"text\" type=\"button\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "353",
+            "line": "            <span class=\"share-icon\">📋</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "354",
+            "line": "            <span class=\"share-label\">Copy as Text</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "355",
+            "line": "          </button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "356",
+            "line": "          <button class=\"share-option\" data-type=\"image\" type=\"button\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "357",
+            "line": "            <span class=\"share-icon\">🖼️</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "358",
+            "line": "            <span class=\"share-label\">Save as Image</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "359",
+            "line": "          </button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "360",
+            "line": "          <button class=\"share-option\" data-type=\"link\" type=\"button\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "361",
+            "line": "            <span class=\"share-icon\">🔗</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "362",
+            "line": "            <span class=\"share-label\">Copy Link</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "363",
+            "line": "          </button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "364",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "365",
+            "line": "        <div id=\"shareStatus\" class=\"share-status\" hidden></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "366",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "367",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "368",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "370",
+            "line": "  <template id=\"result-template\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "371",
+            "line": "    <article class=\"card\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "372",
+            "line": "      <header>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "373",
+            "line": "        <div class=\"meta\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "374",
+            "line": "          <span class=\"type\"></span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "375",
+            "line": "          <span class=\"video-indicator\" hidden aria-label=\"Contains video\"> ▶︎ </span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "376",
+            "line": "          <span class=\"entry-id\"></span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "377",
+            "line": "          <span class=\"date\"></span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "378",
+            "line": "          <span class=\"copy-badge\" hidden title=\"Copy video link with title\">🔗</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "379",
+            "line": "          <span class=\"badges\"></span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "380",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "381",
+            "line": "        <h2></h2>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "382",
+            "line": "      </header>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "383",
+            "line": "      <p class=\"excerpt\"></p>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "384",
+            "line": "      <button class=\"toggle\" type=\"button\" aria-expanded=\"false\">Show full answer</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "385",
+            "line": "      <div class=\"answer\" hidden></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "386",
+            "line": "      <footer>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "387",
+            "line": "        <a class=\"source\" target=\"_blank\" rel=\"noopener noreferrer\">View Source</a>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "388",
+            "line": "        <div class=\"footer-actions\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "389",
+            "line": "          <div class=\"feedback-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "390",
+            "line": "            <span class=\"feedback-label\">Helpful?</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "391",
+            "line": "            <div class=\"feedback-btns\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "392",
+            "line": "              <button class=\"feedback-btn feedback-up\" type=\"button\" data-type=\"up\" aria-label=\"Yes, helpful\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "393",
+            "line": "                title=\"Yes, this result was helpful\">👍</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "394",
+            "line": "              <button class=\"feedback-btn feedback-down\" type=\"button\" data-type=\"down\" aria-label=\"Not helpful\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "395",
+            "line": "                title=\"Not helpful for my search\">👎</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "396",
+            "line": "            </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "397",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "398",
+            "line": "          <button class=\"bookmark-btn\" type=\"button\" aria-label=\"Bookmark\" title=\"Bookmark\" hidden>❤️</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "399",
+            "line": "          <button class=\"share-btn\" type=\"button\" aria-label=\"Share this Q&A\" title=\"Share this Q&A\">Share</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "400",
+            "line": "        </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "401",
+            "line": "      </footer>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "402",
+            "line": "    </article>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "403",
+            "line": "  </template>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "405",
+            "line": "  <!-- Mini Player (Picture-in-Picture) -->",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "406",
+            "line": "  <div id=\"miniPlayer\" class=\"mini-player\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "407",
+            "line": "    <div class=\"mini-player-header\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "408",
+            "line": "      <div class=\"mini-player-title-row\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "409",
+            "line": "        <span class=\"mini-player-title\">Mini Player</span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "410",
+            "line": "        <label class=\"mini-player-toggle\" for=\"miniPlayerToggle\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "411",
+            "line": "          <input type=\"checkbox\" id=\"miniPlayerToggle\" checked />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "412",
+            "line": "          <span class=\"mini-player-toggle-switch\"></span>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "413",
+            "line": "        </label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "414",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "415",
+            "line": "      <div class=\"mini-player-controls\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "416",
+            "line": "        <button class=\"mini-player-btn mini-player-pin\" type=\"button\" aria-label=\"Pin\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "417",
+            "line": "          title=\"Pin - keep this video\">📌</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "418",
+            "line": "        <button class=\"mini-player-btn mini-player-back\" type=\"button\" aria-label=\"Go to video\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "419",
+            "line": "          title=\"Scroll to video\">↩</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "420",
+            "line": "        <button class=\"mini-player-btn mini-player-close\" type=\"button\" aria-label=\"Close\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "421",
+            "line": "          title=\"Close mini player\">✕</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "422",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "423",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "424",
+            "line": "    <div class=\"mini-player-content\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "425",
+            "line": "      <div class=\"mini-player-video\"></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "426",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "427",
+            "line": "    <div class=\"mini-player-resize-handle\"></div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "428",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "430",
+            "line": "  <div class=\"disclaimer\"",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "431",
+            "line": "    style=\"text-align: center; padding: 1rem; margin-top: 2rem; color: var(--subtle); font-size: 0.85rem; border-top: 1px solid var(--border);\">",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "432",
+            "line": "    <p style=\"margin: 0;\">This is an independent, self-made project and is not affiliated with, endorsed by, or",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "433",
+            "line": "      connected to Sheikh Assim Al-Hakeem or assimalhakeem.net.</p>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "434",
+            "line": "    <div class=\"footer-assist\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "435",
+            "line": "      <div class=\"assist-actions\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "436",
+            "line": "        <button id=\"footerAskBtn\" type=\"button\" class=\"assist-btn\">Ask Sheikh Assim</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "437",
+            "line": "        <button id=\"footerBookBtn\" type=\"button\" class=\"assist-btn\">Book a Live Session</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "438",
+            "line": "        <button id=\"footerYoutubeBtn\" type=\"button\" class=\"assist-btn\">Search on YouTube</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "439",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "440",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "441",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "442",
+            "line": "  <div id=\"footerYoutubeModal\" class=\"modal\" hidden>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "443",
+            "line": "    <div class=\"modal-content modal-small\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "444",
+            "line": "      <div class=\"modal-header\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "445",
+            "line": "        <h3>Search on YouTube</h3>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "446",
+            "line": "        <button class=\"modal-close\" type=\"button\" aria-label=\"Close\">&times;</button>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "447",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "448",
+            "line": "      <div class=\"modal-body\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "449",
+            "line": "        <form id=\"footerYoutubeForm\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "450",
+            "line": "          <div class=\"form-group\">",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "451",
+            "line": "            <label for=\"footerYoutubeQuery\">What would you like to search?</label>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "452",
+            "line": "            <input type=\"text\" id=\"footerYoutubeQuery\" required placeholder=\"e.g. zakat on gold\" />",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "453",
+            "line": "          </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "454",
+            "line": "          <button type=\"submit\" class=\"btn-primary\" style=\"width: 100%;\">Search YouTube</button>",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "455",
+            "line": "        </form>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "456",
+            "line": "      </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "457",
+            "line": "    </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "458",
+            "line": "  </div>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "460",
+            "line": "  <script src=\"html2canvas.min.js\"></script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "461",
+            "line": "  <script type=\"module\" src=\"auth.js\"></script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "462",
+            "line": "  <script type=\"module\" src=\"app.js\"></script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "463",
+            "line": "  <script src=\"miniplayer.js\"></script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "464",
+            "line": "  <script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "465",
+            "line": "    // Register service worker for PWA",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "466",
+            "line": "    if ('serviceWorker' in navigator) {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "467",
+            "line": "      window.addEventListener('load', () => {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "468",
+            "line": "        navigator.serviceWorker.register('/sw.js')",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "469",
+            "line": "          .then((registration) => {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "470",
+            "line": "            console.log('ServiceWorker registered:', registration.scope);",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "472",
+            "line": "            // Check for updates",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "473",
+            "line": "            registration.addEventListener('updatefound', () => {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "474",
+            "line": "              const newWorker = registration.installing;",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "475",
+            "line": "              newWorker.addEventListener('statechange', () => {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "476",
+            "line": "                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "477",
+            "line": "                  // New service worker available, prompt user to refresh",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "478",
+            "line": "                  if (confirm('New version available! Reload to update?')) {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "479",
+            "line": "                    newWorker.postMessage({ type: 'SKIP_WAITING' });",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "480",
+            "line": "                    window.location.reload();",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "481",
+            "line": "                  }",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "482",
+            "line": "                }",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "483",
+            "line": "              });",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "484",
+            "line": "            });",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "485",
+            "line": "          })",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "486",
+            "line": "          .catch((error) => {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "487",
+            "line": "            console.error('ServiceWorker registration failed:', error);",
+            "message": "Unknown directive"
+          },
+          {
+            "index": "488",
+            "line": "          });",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "489",
+            "line": "      });",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "491",
+            "line": "      // Reload page when new service worker takes control",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "492",
+            "line": "      let refreshing = false;",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "493",
+            "line": "      navigator.serviceWorker.addEventListener('controllerchange', () => {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "494",
+            "line": "        if (!refreshing) {",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "495",
+            "line": "          refreshing = true;",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "496",
+            "line": "          window.location.reload();",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "497",
+            "line": "        }",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "498",
+            "line": "      });",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "499",
+            "line": "    }",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "500",
+            "line": "  </script>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "501",
+            "line": "</body>",
+            "message": "Syntax not understood"
+          },
+          {
+            "index": "503",
+            "line": "</html>",
+            "message": "Syntax not understood"
+          }
+        ]
+      }
+    },
+    "hreflang": {
+      "id": "hreflang",
+      "title": "Document has a valid `hreflang`",
+      "description": "hreflang links tell search engines what version of a page they should list in search results for a given language or region. [Learn more about `hreflang`](https://developer.chrome.com/docs/lighthouse/seo/hreflang/).",
+      "score": 1,
+      "scoreDisplayMode": "binary",
+      "details": {
+        "type": "table",
+        "headings": [
+          {
+            "key": "source",
+            "valueType": "code",
+            "subItemsHeading": {
+              "key": "reason",
+              "valueType": "text"
+            },
+            "label": ""
+          }
+        ],
+        "items": []
+      }
+    },
+    "canonical": {
+      "id": "canonical",
+      "title": "Document has a valid `rel=canonical`",
+      "description": "Canonical links suggest which URL to show in search results. [Learn more about canonical links](https://developer.chrome.com/docs/lighthouse/seo/canonical/).",
+      "score": null,
+      "scoreDisplayMode": "notApplicable"
+    },
+    "structured-data": {
+      "id": "structured-data",
+      "title": "Structured data is valid",
+      "description": "Run the [Structured Data Testing Tool](https://developers.google.com/search/docs/appearance/structured-data/) to validate structured data. [Learn more about Structured Data](https://developer.chrome.com/docs/lighthouse/seo/structured-data/).",
+      "score": null,
+      "scoreDisplayMode": "manual"
+    }
+  },
+  "configSettings": {
+    "output": [
+      "json",
+      "html"
+    ],
+    "maxWaitForFcp": 30000,
+    "maxWaitForLoad": 45000,
+    "pauseAfterFcpMs": 1000,
+    "pauseAfterLoadMs": 1000,
+    "networkQuietThresholdMs": 1000,
+    "cpuQuietThresholdMs": 1000,
+    "formFactor": "desktop",
+    "throttling": {
+      "rttMs": 40,
+      "throughputKbps": 10240,
+      "requestLatencyMs": 0,
+      "downloadThroughputKbps": 0,
+      "uploadThroughputKbps": 0,
+      "cpuSlowdownMultiplier": 1
+    },
+    "throttlingMethod": "simulate",
+    "screenEmulation": {
+      "mobile": false,
+      "width": 1350,
+      "height": 940,
+      "deviceScaleFactor": 1,
+      "disabled": false
+    },
+    "emulatedUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+    "auditMode": false,
+    "gatherMode": false,
+    "clearStorageTypes": [
+      "file_systems",
+      "shader_cache",
+      "service_workers",
+      "cache_storage"
+    ],
+    "disableStorageReset": false,
+    "debugNavigation": false,
+    "channel": "cli",
+    "usePassiveGathering": false,
+    "disableFullPageScreenshot": false,
+    "skipAboutBlank": false,
+    "blankPage": "about:blank",
+    "ignoreStatusCode": false,
+    "locale": "en-US",
+    "blockedUrlPatterns": null,
+    "additionalTraceCategories": null,
+    "extraHeaders": null,
+    "precomputedLanternData": null,
+    "onlyAudits": null,
+    "onlyCategories": [
+      "best-practices",
+      "seo"
+    ],
+    "skipAudits": null
+  },
+  "categories": {
+    "best-practices": {
+      "title": "Best Practices",
+      "supportedModes": [
+        "navigation",
+        "timespan",
+        "snapshot"
+      ],
+      "auditRefs": [
+        {
+          "id": "is-on-https",
+          "weight": 5,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "redirects-http",
+          "weight": 0,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "geolocation-on-start",
+          "weight": 1,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "notification-on-start",
+          "weight": 1,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "csp-xss",
+          "weight": 0,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "has-hsts",
+          "weight": 0,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "origin-isolation",
+          "weight": 0,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "clickjacking-mitigation",
+          "weight": 0,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "trusted-types-xss",
+          "weight": 0,
+          "group": "best-practices-trust-safety"
+        },
+        {
+          "id": "paste-preventing-inputs",
+          "weight": 3,
+          "group": "best-practices-ux"
+        },
+        {
+          "id": "image-aspect-ratio",
+          "weight": 1,
+          "group": "best-practices-ux"
+        },
+        {
+          "id": "image-size-responsive",
+          "weight": 1,
+          "group": "best-practices-ux"
+        },
+        {
+          "id": "doctype",
+          "weight": 1,
+          "group": "best-practices-browser-compat"
+        },
+        {
+          "id": "charset",
+          "weight": 1,
+          "group": "best-practices-browser-compat"
+        },
+        {
+          "id": "baseline",
+          "weight": 0,
+          "group": "best-practices-browser-compat"
+        },
+        {
+          "id": "js-libraries",
+          "weight": 0,
+          "group": "best-practices-general"
+        },
+        {
+          "id": "deprecations",
+          "weight": 5,
+          "group": "best-practices-general"
+        },
+        {
+          "id": "third-party-cookies",
+          "weight": 5,
+          "group": "best-practices-general"
+        },
+        {
+          "id": "errors-in-console",
+          "weight": 1,
+          "group": "best-practices-general"
+        },
+        {
+          "id": "valid-source-maps",
+          "weight": 0,
+          "group": "best-practices-general"
+        },
+        {
+          "id": "inspector-issues",
+          "weight": 1,
+          "group": "best-practices-general"
+        }
+      ],
+      "id": "best-practices",
+      "score": 0.96
+    },
+    "seo": {
+      "title": "SEO",
+      "description": "These checks ensure that your page is following basic search engine optimization advice. There are many additional factors Lighthouse does not score here that may affect your search ranking, including performance on [Core Web Vitals](https://web.dev/explore/vitals). [Learn more about Google Search Essentials](https://support.google.com/webmasters/answer/35769).",
+      "manualDescription": "Run these additional validators on your site to check additional SEO best practices.",
+      "supportedModes": [
+        "navigation",
+        "snapshot"
+      ],
+      "auditRefs": [
+        {
+          "id": "is-crawlable",
+          "weight": 4.043478260869565,
+          "group": "seo-crawl"
+        },
+        {
+          "id": "document-title",
+          "weight": 1,
+          "group": "seo-content"
+        },
+        {
+          "id": "meta-description",
+          "weight": 1,
+          "group": "seo-content"
+        },
+        {
+          "id": "http-status-code",
+          "weight": 1,
+          "group": "seo-crawl"
+        },
+        {
+          "id": "link-text",
+          "weight": 1,
+          "group": "seo-content"
+        },
+        {
+          "id": "crawlable-anchors",
+          "weight": 1,
+          "group": "seo-crawl"
+        },
+        {
+          "id": "robots-txt",
+          "weight": 1,
+          "group": "seo-crawl"
+        },
+        {
+          "id": "image-alt",
+          "weight": 0,
+          "group": "seo-content"
+        },
+        {
+          "id": "hreflang",
+          "weight": 1,
+          "group": "seo-content"
+        },
+        {
+          "id": "canonical",
+          "weight": 0,
+          "group": "seo-content"
+        },
+        {
+          "id": "structured-data",
+          "weight": 0
+        }
+      ],
+      "id": "seo",
+      "score": 0.82
+    }
+  },
+  "categoryGroups": {
+    "metrics": {
+      "title": "Metrics"
+    },
+    "insights": {
+      "title": "Insights",
+      "description": "These insights are also available in the Chrome DevTools Performance Panel - [record a trace](https://developer.chrome.com/docs/devtools/performance/reference) to view more detailed information."
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "description": "More information about the performance of your application. These numbers don't [directly affect](https://developer.chrome.com/docs/lighthouse/performance/performance-scoring/) the Performance score."
+    },
+    "a11y-best-practices": {
+      "title": "Best practices",
+      "description": "These items highlight common accessibility best practices."
+    },
+    "a11y-color-contrast": {
+      "title": "Contrast",
+      "description": "These are opportunities to improve the legibility of your content."
+    },
+    "a11y-names-labels": {
+      "title": "Names and labels",
+      "description": "These are opportunities to improve the semantics of the controls in your application. This may enhance the experience for users of assistive technology, like a screen reader."
+    },
+    "a11y-navigation": {
+      "title": "Navigation",
+      "description": "These are opportunities to improve keyboard navigation in your application."
+    },
+    "a11y-aria": {
+      "title": "ARIA",
+      "description": "These are opportunities to improve the usage of ARIA in your application which may enhance the experience for users of assistive technology, like a screen reader."
+    },
+    "a11y-language": {
+      "title": "Internationalization and localization",
+      "description": "These are opportunities to improve the interpretation of your content by users in different locales."
+    },
+    "a11y-audio-video": {
+      "title": "Audio and video",
+      "description": "These are opportunities to provide alternative content for audio and video. This may improve the experience for users with hearing or vision impairments."
+    },
+    "a11y-tables-lists": {
+      "title": "Tables and lists",
+      "description": "These are opportunities to improve the experience of reading tabular or list data using assistive technology, like a screen reader."
+    },
+    "seo-mobile": {
+      "title": "Mobile Friendly",
+      "description": "Make sure your pages are mobile friendly so users don’t have to pinch or zoom in order to read the content pages. [Learn how to make pages mobile-friendly](https://developers.google.com/search/mobile-sites/)."
+    },
+    "seo-content": {
+      "title": "Content Best Practices",
+      "description": "Format your HTML in a way that enables crawlers to better understand your app’s content."
+    },
+    "seo-crawl": {
+      "title": "Crawling and Indexing",
+      "description": "To appear in search results, crawlers need access to your app."
+    },
+    "best-practices-trust-safety": {
+      "title": "Trust and Safety"
+    },
+    "best-practices-ux": {
+      "title": "User Experience"
+    },
+    "best-practices-browser-compat": {
+      "title": "Browser Compatibility"
+    },
+    "best-practices-general": {
+      "title": "General"
+    },
+    "webmcp": {
+      "title": "WebMCP",
+      "description": "Audits validating WebMCP integration."
+    },
+    "agent-accessibility": {
+      "title": "Agent Accessibility",
+      "description": "These audits highlight best practices for improving the accessibility of the website for AI agents."
+    },
+    "hidden": {
+      "title": ""
+    }
+  },
+  "stackPacks": [],
+  "entities": [
+    {
+      "name": "sheikhassim.com",
+      "origins": [
+        "https://search.sheikhassim.com"
+      ],
+      "isFirstParty": true,
+      "isUnrecognized": true
+    },
+    {
+      "name": "Google Fonts",
+      "homepage": "https://fonts.google.com/",
+      "origins": [
+        "https://fonts.googleapis.com",
+        "https://fonts.gstatic.com"
+      ],
+      "category": "cdn"
+    },
+    {
+      "name": "Cloudflare",
+      "homepage": "https://www.cloudflare.com/website-optimization/",
+      "origins": [
+        "https://static.cloudflareinsights.com"
+      ],
+      "category": "utility"
+    }
+  ],
+  "fullPageScreenshot": {
+    "screenshot": {
+      "data": "data:image/webp;base64,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jELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTwd8EXYtM7qagJjELjALqagJjELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTwd8EXYtM7qagJjELjALqagJjELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTwd8EXYtM7qagJjELjALqagJjELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTwd8EXYtM7qagJjELjALqagJjELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTwd8EXYtM7qagJjELjALqagJjELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTwd8EXYtM7qagJjELjALqagJjELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTwd8EXYtM7qagJjELjALqagJjELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTwd8EXYtM7qagJjELjALqagJjELjALqagJjELjALqagJjELjALqeDvgi7FpndTUBMYhcYBdTUBMYhcYBdTUBMYhcYBdTUBMYhcYBcQAA/v9gp7GSSpNWSAwHq+HgAAIDDthTZH1mw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gw2Gv8MHIAAAcKi3yoJ8v1u17aAAAGF0xvWCovRuQU3AwHVY3jrT/wq2FOB+e+JkYEJ2n84AvFmXsn2m0PKt+gYE0fxoloKtA4TBhp5ccfEZ9fNANy7NbplBkbZt8B+lFGtCZQwmNgGf0aXvqovZUMheovq2owoejpHqyfMhoz7/paSNy9vhBPz1LL178t9tpYIAKVchMKMGoezu8TRq7GsbWftOBjCgMk2U7s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",
+      "width": 1350,
+      "height": 940
+    },
+    "nodes": {
+      "1-0-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-1-A": {
+        "id": "",
+        "top": 72,
+        "bottom": 116,
+        "left": 960,
+        "right": 1012,
+        "width": 52,
+        "height": 44
+      },
+      "1-2-A": {
+        "id": "",
+        "top": 56,
+        "bottom": 100,
+        "left": 149,
+        "right": 572,
+        "width": 423,
+        "height": 44
+      },
+      "1-3-A": {
+        "id": "",
+        "top": 72,
+        "bottom": 116,
+        "left": 1024,
+        "right": 1076,
+        "width": 52,
+        "height": 44
+      },
+      "1-4-FORM": {
+        "id": "loginForm",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-5-FORM": {
+        "id": "registerForm",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-6-LABEL": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-7-LABEL": {
+        "id": "",
+        "top": 220,
+        "bottom": 237,
+        "left": 149,
+        "right": 1201,
+        "width": 1052,
+        "height": 17
+      },
+      "1-8-LABEL": {
+        "id": "",
+        "top": 308,
+        "bottom": 325,
+        "left": 149,
+        "right": 400,
+        "width": 251,
+        "height": 17
+      },
+      "1-9-LABEL": {
+        "id": "",
+        "top": 308,
+        "bottom": 325,
+        "left": 416,
+        "right": 667,
+        "width": 251,
+        "height": 17
+      },
+      "1-10-LABEL": {
+        "id": "",
+        "top": 308,
+        "bottom": 325,
+        "left": 683,
+        "right": 934,
+        "width": 251,
+        "height": 17
+      },
+      "1-11-LABEL": {
+        "id": "",
+        "top": 308,
+        "bottom": 325,
+        "left": 950,
+        "right": 1201,
+        "width": 251,
+        "height": 17
+      },
+      "1-12-LABEL": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-13-LABEL": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-14-LABEL": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-15-LABEL": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-16-LABEL": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-17-LABEL": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-18-INPUT": {
+        "id": "pipToggle",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-19-INPUT": {
+        "id": "search",
+        "top": 243,
+        "bottom": 292,
+        "left": 149,
+        "right": 1201,
+        "width": 1052,
+        "height": 49
+      },
+      "1-20-SELECT": {
+        "id": "typeFilter",
+        "top": 330,
+        "bottom": 372,
+        "left": 149,
+        "right": 400,
+        "width": 251,
+        "height": 42
+      },
+      "1-21-SELECT": {
+        "id": "categoryFilter",
+        "top": 330,
+        "bottom": 372,
+        "left": 416,
+        "right": 667,
+        "width": 251,
+        "height": 42
+      },
+      "1-22-SELECT": {
+        "id": "yearFilter",
+        "top": 330,
+        "bottom": 372,
+        "left": 683,
+        "right": 934,
+        "width": 251,
+        "height": 42
+      },
+      "1-23-SELECT": {
+        "id": "sortOrder",
+        "top": 330,
+        "bottom": 372,
+        "left": 950,
+        "right": 1201,
+        "width": 251,
+        "height": 42
+      },
+      "1-24-INPUT": {
+        "id": "loginUsername",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-25-INPUT": {
+        "id": "loginPassword",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-26-INPUT": {
+        "id": "registerUsername",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-27-INPUT": {
+        "id": "registerPassword",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-28-INPUT": {
+        "id": "apiTokenInput",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-29-INPUT": {
+        "id": "miniPlayerToggle",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-30-LINK": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-31-LINK": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-32-LINK": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-33-LINK": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-34-LINK": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-35-LINK": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-36-LINK": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-37-LINK": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-38-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-39-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-40-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-41-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-42-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-43-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-44-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      },
+      "1-45-META": {
+        "id": "",
+        "top": 0,
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "width": 0,
+        "height": 0
+      }
+    }
+  },
+  "timing": {
+    "entries": [
+      {
+        "startTime": 2333.07,
+        "name": "lh:config",
+        "duration": 865.49,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 2336.52,
+        "name": "lh:config:resolveArtifactsToDefns",
+        "duration": 193.73,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 3198.75,
+        "name": "lh:runner:gather",
+        "duration": 8293.89,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 3287.41,
+        "name": "lh:driver:connect",
+        "duration": 8.11,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 3296.01,
+        "name": "lh:driver:navigate",
+        "duration": 7.72,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 3304.19,
+        "name": "lh:gather:getBenchmarkIndex",
+        "duration": 1005.19,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 4309.61,
+        "name": "lh:gather:getVersion",
+        "duration": 1.1,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 4310.81,
+        "name": "lh:gather:getDevicePixelRatio",
+        "duration": 1.64,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 4312.8,
+        "name": "lh:prepare:navigationMode",
+        "duration": 70.08,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 4314.22,
+        "name": "lh:gather:getVersion",
+        "duration": 0.63,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 4336.65,
+        "name": "lh:storage:clearDataForOrigin",
+        "duration": 20.3,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 4357.16,
+        "name": "lh:storage:clearBrowserCaches",
+        "duration": 22.75,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 4381.12,
+        "name": "lh:gather:prepareThrottlingAndNetwork",
+        "duration": 1.71,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 4437.36,
+        "name": "lh:driver:navigate",
+        "duration": 4617.81,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9322.94,
+        "name": "lh:computed:NetworkRecords",
+        "duration": 0.86,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9324.2,
+        "name": "lh:gather:getArtifact:DevtoolsLog",
+        "duration": 0.03,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9324.26,
+        "name": "lh:gather:getArtifact:Trace",
+        "duration": 0.02,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9324.28,
+        "name": "lh:gather:getArtifact:Accessibility",
+        "duration": 185.21,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9509.52,
+        "name": "lh:gather:getArtifact:AnchorElements",
+        "duration": 10.58,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9520.12,
+        "name": "lh:gather:getArtifact:ConsoleMessages",
+        "duration": 0.04,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9520.17,
+        "name": "lh:gather:getArtifact:Doctype",
+        "duration": 1.04,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9521.22,
+        "name": "lh:gather:getArtifact:Inputs",
+        "duration": 6.15,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9527.4,
+        "name": "lh:gather:getArtifact:ImageElements",
+        "duration": 333.06,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9860.96,
+        "name": "lh:gather:getArtifact:InspectorIssues",
+        "duration": 0.71,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9861.84,
+        "name": "lh:gather:getArtifact:LinkElements",
+        "duration": 17.91,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9878.9,
+        "name": "lh:computed:MainResource",
+        "duration": 0.61,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9879.85,
+        "name": "lh:gather:getArtifact:MainDocumentContent",
+        "duration": 9.38,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9889.35,
+        "name": "lh:gather:getArtifact:MetaElements",
+        "duration": 16.64,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9906.17,
+        "name": "lh:gather:getArtifact:NetworkUserAgent",
+        "duration": 0.54,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 9906.8,
+        "name": "lh:gather:getArtifact:RobotsTxt",
+        "duration": 341.5,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 10248.4,
+        "name": "lh:gather:getArtifact:Scripts",
+        "duration": 0.5,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 10249.16,
+        "name": "lh:gather:getArtifact:SourceMaps",
+        "duration": 0.27,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 10249.48,
+        "name": "lh:gather:getArtifact:Stacks",
+        "duration": 40.35,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 10249.79,
+        "name": "lh:gather:collectStacks",
+        "duration": 39.95,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 10289.9,
+        "name": "lh:gather:getArtifact:ViewportDimensions",
+        "duration": 4.56,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 10294.59,
+        "name": "lh:gather:getArtifact:FullPageScreenshot",
+        "duration": 1179.45,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11470.46,
+        "name": "lh:gather:getVersion",
+        "duration": 0.87,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11493.15,
+        "name": "lh:runner:audit",
+        "duration": 101.27,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11493.31,
+        "name": "lh:runner:auditing",
+        "duration": 100.69,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11495.69,
+        "name": "lh:audit:is-on-https",
+        "duration": 6.57,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11503.67,
+        "name": "lh:audit:redirects-http",
+        "duration": 3.39,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11507.75,
+        "name": "lh:audit:errors-in-console",
+        "duration": 3.01,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11508.52,
+        "name": "lh:computed:JSBundles",
+        "duration": 0.11,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11511.14,
+        "name": "lh:audit:image-aspect-ratio",
+        "duration": 1.41,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11512.94,
+        "name": "lh:audit:image-size-responsive",
+        "duration": 1.78,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11513.55,
+        "name": "lh:computed:ImageRecords",
+        "duration": 0.25,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11515.76,
+        "name": "lh:audit:deprecations",
+        "duration": 1.12,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11517.2,
+        "name": "lh:audit:third-party-cookies",
+        "duration": 1.19,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11519.65,
+        "name": "lh:audit:valid-source-maps",
+        "duration": 3.84,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11521,
+        "name": "lh:computed:EntityClassification",
+        "duration": 1.51,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11524.59,
+        "name": "lh:audit:csp-xss",
+        "duration": 1.16,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11526.03,
+        "name": "lh:audit:has-hsts",
+        "duration": 1.55,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11527.92,
+        "name": "lh:audit:origin-isolation",
+        "duration": 1.31,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11529.61,
+        "name": "lh:audit:clickjacking-mitigation",
+        "duration": 1.71,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11531.51,
+        "name": "lh:audit:trusted-types-xss",
+        "duration": 1.45,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11533.58,
+        "name": "lh:audit:document-title",
+        "duration": 8.9,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11543.04,
+        "name": "lh:audit:image-alt",
+        "duration": 3.76,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11547.12,
+        "name": "lh:audit:doctype",
+        "duration": 1.59,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11549.4,
+        "name": "lh:audit:charset",
+        "duration": 2.47,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11553.08,
+        "name": "lh:audit:geolocation-on-start",
+        "duration": 4.52,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11558.1,
+        "name": "lh:audit:inspector-issues",
+        "duration": 1.77,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11560.14,
+        "name": "lh:audit:js-libraries",
+        "duration": 0.93,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11561.41,
+        "name": "lh:audit:notification-on-start",
+        "duration": 0.9,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11562.56,
+        "name": "lh:audit:paste-preventing-inputs",
+        "duration": 1.22,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11564.02,
+        "name": "lh:audit:baseline",
+        "duration": 4.39,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11569.06,
+        "name": "lh:audit:meta-description",
+        "duration": 1.32,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11570.76,
+        "name": "lh:audit:http-status-code",
+        "duration": 0.97,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11572.04,
+        "name": "lh:audit:link-text",
+        "duration": 1.14,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11573.5,
+        "name": "lh:audit:crawlable-anchors",
+        "duration": 1.39,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11575.2,
+        "name": "lh:audit:is-crawlable",
+        "duration": 3.61,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11579.4,
+        "name": "lh:audit:robots-txt",
+        "duration": 10.22,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11589.98,
+        "name": "lh:audit:hreflang",
+        "duration": 1.24,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11591.59,
+        "name": "lh:audit:canonical",
+        "duration": 1.24,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11593.12,
+        "name": "lh:audit:structured-data",
+        "duration": 0.86,
+        "entryType": "measure"
+      },
+      {
+        "startTime": 11594.02,
+        "name": "lh:runner:generate",
+        "duration": 0.38,
+        "entryType": "measure"
+      }
+    ],
+    "total": 8395.16
+  },
+  "i18n": {
+    "rendererFormattedStrings": {
+      "calculatorLink": "See calculator.",
+      "collapseView": "Collapse view",
+      "crcInitialNavigation": "Initial Navigation",
+      "crcLongestDurationLabel": "Maximum critical path latency:",
+      "dropdownCopyJSON": "Copy JSON",
+      "dropdownDarkTheme": "Toggle Dark Theme",
+      "dropdownPrintExpanded": "Print Expanded",
+      "dropdownPrintSummary": "Print Summary",
+      "dropdownSaveGist": "Save as Gist",
+      "dropdownSaveHTML": "Save as HTML",
+      "dropdownSaveJSON": "Save as JSON",
+      "dropdownViewUnthrottledTrace": "View Unthrottled Trace",
+      "dropdownViewer": "Open in Viewer",
+      "errorLabel": "Error!",
+      "errorMissingAuditInfo": "Report error: no audit information",
+      "expandView": "Expand view",
+      "firstPartyChipLabel": "1st party",
+      "footerIssue": "File an issue",
+      "hide": "Hide",
+      "labDataTitle": "Lab Data",
+      "lsPerformanceCategoryDescription": "[Lighthouse](https://developers.google.com/web/tools/lighthouse/) analysis of the current page on an emulated mobile network. Values are estimated and may vary.",
+      "manualAuditsGroupTitle": "Additional items to manually check",
+      "notApplicableAuditsGroupTitle": "Not applicable",
+      "openInANewTabTooltip": "Open in a new tab",
+      "opportunityResourceColumnLabel": "Opportunity",
+      "opportunitySavingsColumnLabel": "Estimated Savings",
+      "passedAuditsGroupTitle": "Passed audits",
+      "runtimeAnalysisWindow": "Initial page load",
+      "runtimeAnalysisWindowSnapshot": "Point-in-time snapshot",
+      "runtimeAnalysisWindowTimespan": "User interactions timespan",
+      "runtimeCustom": "Custom throttling",
+      "runtimeDesktopEmulation": "Emulated Desktop",
+      "runtimeMobileEmulation": "Emulated Moto G Power",
+      "runtimeNoEmulation": "No emulation",
+      "runtimeSettingsAxeVersion": "Axe version",
+      "runtimeSettingsBenchmark": "Unthrottled CPU/Memory Power",
+      "runtimeSettingsCPUThrottling": "CPU throttling",
+      "runtimeSettingsDevice": "Device",
+      "runtimeSettingsNetworkThrottling": "Network throttling",
+      "runtimeSettingsScreenEmulation": "Screen emulation",
+      "runtimeSettingsUANetwork": "User agent (network)",
+      "runtimeSingleLoad": "Single page session",
+      "runtimeSingleLoadTooltip": "This data is taken from a single page session, as opposed to field data summarizing many sessions.",
+      "runtimeSlow4g": "Slow 4G throttling",
+      "runtimeUnknown": "Unknown",
+      "show": "Show",
+      "showRelevantAudits": "Show audits relevant to:",
+      "snippetCollapseButtonLabel": "Collapse snippet",
+      "snippetExpandButtonLabel": "Expand snippet",
+      "thirdPartyResourcesLabel": "Show 3rd-party resources",
+      "throttlingProvided": "Provided by environment",
+      "toplevelWarningsMessage": "There were issues affecting this run of Lighthouse:",
+      "unattributable": "Unattributable",
+      "unscoredLabel": "Unscored",
+      "unscoredTitle": "This audit does not contribute to the overall category score.",
+      "varianceDisclaimer": "Values are estimated and may vary. The [performance score is calculated](https://developer.chrome.com/docs/lighthouse/performance/performance-scoring/) directly from these metrics.",
+      "viewTraceLabel": "View Trace",
+      "viewTreemapLabel": "View Treemap",
+      "warningAuditsGroupTitle": "Passed audits but with warnings",
+      "warningHeader": "Warnings: "
+    },
+    "icuMessagePaths": {
+      "core/audits/is-on-https.js | title": [
+        "audits[is-on-https].title"
+      ],
+      "core/audits/is-on-https.js | description": [
+        "audits[is-on-https].description"
+      ],
+      "core/audits/is-on-https.js | columnInsecureURL": [
+        "audits[is-on-https].details.headings[0].label"
+      ],
+      "core/audits/is-on-https.js | columnResolution": [
+        "audits[is-on-https].details.headings[1].label"
+      ],
+      "core/audits/redirects-http.js | title": [
+        "audits[redirects-http].title"
+      ],
+      "core/audits/redirects-http.js | description": [
+        "audits[redirects-http].description"
+      ],
+      "core/audits/errors-in-console.js | failureTitle": [
+        "audits[errors-in-console].title"
+      ],
+      "core/audits/errors-in-console.js | description": [
+        "audits[errors-in-console].description"
+      ],
+      "core/lib/i18n/i18n.js | columnSource": [
+        "audits[errors-in-console].details.headings[0].label",
+        "audits.deprecations.details.headings[1].label",
+        "audits[geolocation-on-start].details.headings[0].label",
+        "audits[notification-on-start].details.headings[0].label",
+        "audits.baseline.details.headings[2].label"
+      ],
+      "core/lib/i18n/i18n.js | columnDescription": [
+        "audits[errors-in-console].details.headings[1].label",
+        "audits[csp-xss].details.headings[0].label",
+        "audits[has-hsts].details.headings[0].label",
+        "audits[origin-isolation].details.headings[0].label",
+        "audits[clickjacking-mitigation].details.headings[0].label",
+        "audits[trusted-types-xss].details.headings[0].label"
+      ],
+      "core/audits/image-aspect-ratio.js | title": [
+        "audits[image-aspect-ratio].title"
+      ],
+      "core/audits/image-aspect-ratio.js | description": [
+        "audits[image-aspect-ratio].description"
+      ],
+      "core/lib/i18n/i18n.js | columnURL": [
+        "audits[image-aspect-ratio].details.headings[1].label",
+        "audits[image-size-responsive].details.headings[1].label",
+        "audits[third-party-cookies].details.headings[1].label",
+        "audits[valid-source-maps].details.headings[0].label"
+      ],
+      "core/audits/image-aspect-ratio.js | columnDisplayed": [
+        "audits[image-aspect-ratio].details.headings[2].label"
+      ],
+      "core/audits/image-aspect-ratio.js | columnActual": [
+        "audits[image-aspect-ratio].details.headings[3].label"
+      ],
+      "core/audits/image-size-responsive.js | title": [
+        "audits[image-size-responsive].title"
+      ],
+      "core/audits/image-size-responsive.js | description": [
+        "audits[image-size-responsive].description"
+      ],
+      "core/audits/image-size-responsive.js | columnDisplayed": [
+        "audits[image-size-responsive].details.headings[2].label"
+      ],
+      "core/audits/image-size-responsive.js | columnActual": [
+        "audits[image-size-responsive].details.headings[3].label"
+      ],
+      "core/audits/image-size-responsive.js | columnExpected": [
+        "audits[image-size-responsive].details.headings[4].label"
+      ],
+      "core/audits/deprecations.js | title": [
+        "audits.deprecations.title"
+      ],
+      "core/audits/deprecations.js | description": [
+        "audits.deprecations.description"
+      ],
+      "core/audits/deprecations.js | columnDeprecate": [
+        "audits.deprecations.details.headings[0].label"
+      ],
+      "core/audits/third-party-cookies.js | title": [
+        "audits[third-party-cookies].title"
+      ],
+      "core/audits/third-party-cookies.js | description": [
+        "audits[third-party-cookies].description"
+      ],
+      "core/lib/i18n/i18n.js | columnName": [
+        "audits[third-party-cookies].details.headings[0].label"
+      ],
+      "core/audits/valid-source-maps.js | title": [
+        "audits[valid-source-maps].title"
+      ],
+      "core/audits/valid-source-maps.js | description": [
+        "audits[valid-source-maps].description"
+      ],
+      "core/audits/valid-source-maps.js | columnMapURL": [
+        "audits[valid-source-maps].details.headings[1].label"
+      ],
+      "core/audits/csp-xss.js | title": [
+        "audits[csp-xss].title"
+      ],
+      "core/audits/csp-xss.js | description": [
+        "audits[csp-xss].description"
+      ],
+      "core/audits/csp-xss.js | columnDirective": [
+        "audits[csp-xss].details.headings[1].label"
+      ],
+      "core/audits/csp-xss.js | columnSeverity": [
+        "audits[csp-xss].details.headings[2].label"
+      ],
+      "core/lib/i18n/i18n.js | itemSeverityHigh": [
+        "audits[csp-xss].details.items[0].severity",
+        "audits[has-hsts].details.items[0].severity",
+        "audits[origin-isolation].details.items[0].severity",
+        "audits[clickjacking-mitigation].details.items[0].severity",
+        "audits[trusted-types-xss].details.items[0].severity"
+      ],
+      "core/audits/csp-xss.js | noCsp": [
+        "audits[csp-xss].details.items[0].description"
+      ],
+      "core/audits/has-hsts.js | title": [
+        "audits[has-hsts].title"
+      ],
+      "core/audits/has-hsts.js | description": [
+        "audits[has-hsts].description"
+      ],
+      "core/audits/has-hsts.js | columnDirective": [
+        "audits[has-hsts].details.headings[1].label"
+      ],
+      "core/audits/has-hsts.js | columnSeverity": [
+        "audits[has-hsts].details.headings[2].label"
+      ],
+      "core/audits/has-hsts.js | noHsts": [
+        "audits[has-hsts].details.items[0].description"
+      ],
+      "core/audits/origin-isolation.js | title": [
+        "audits[origin-isolation].title"
+      ],
+      "core/audits/origin-isolation.js | description": [
+        "audits[origin-isolation].description"
+      ],
+      "core/audits/origin-isolation.js | columnDirective": [
+        "audits[origin-isolation].details.headings[1].label"
+      ],
+      "core/audits/origin-isolation.js | columnSeverity": [
+        "audits[origin-isolation].details.headings[2].label"
+      ],
+      "core/audits/origin-isolation.js | noCoop": [
+        "audits[origin-isolation].details.items[0].description"
+      ],
+      "core/audits/clickjacking-mitigation.js | title": [
+        "audits[clickjacking-mitigation].title"
+      ],
+      "core/audits/clickjacking-mitigation.js | description": [
+        "audits[clickjacking-mitigation].description"
+      ],
+      "core/audits/clickjacking-mitigation.js | columnSeverity": [
+        "audits[clickjacking-mitigation].details.headings[1].label"
+      ],
+      "core/audits/clickjacking-mitigation.js | noClickjackingMitigation": [
+        "audits[clickjacking-mitigation].details.items[0].description"
+      ],
+      "core/audits/trusted-types-xss.js | title": [
+        "audits[trusted-types-xss].title"
+      ],
+      "core/audits/trusted-types-xss.js | description": [
+        "audits[trusted-types-xss].description"
+      ],
+      "core/audits/trusted-types-xss.js | columnSeverity": [
+        "audits[trusted-types-xss].details.headings[1].label"
+      ],
+      "core/audits/trusted-types-xss.js | noTrustedTypesToMitigateXss": [
+        "audits[trusted-types-xss].details.items[0].description"
+      ],
+      "core/audits/accessibility/document-title.js | title": [
+        "audits[document-title].title"
+      ],
+      "core/audits/accessibility/document-title.js | description": [
+        "audits[document-title].description"
+      ],
+      "core/lib/i18n/i18n.js | columnFailingElem": [
+        "audits[document-title].details.headings[0].label",
+        "audits[paste-preventing-inputs].details.headings[0].label"
+      ],
+      "core/audits/accessibility/image-alt.js | title": [
+        "audits[image-alt].title"
+      ],
+      "core/audits/accessibility/image-alt.js | description": [
+        "audits[image-alt].description"
+      ],
+      "core/audits/dobetterweb/doctype.js | title": [
+        "audits.doctype.title"
+      ],
+      "core/audits/dobetterweb/doctype.js | description": [
+        "audits.doctype.description"
+      ],
+      "core/audits/dobetterweb/charset.js | title": [
+        "audits.charset.title"
+      ],
+      "core/audits/dobetterweb/charset.js | description": [
+        "audits.charset.description"
+      ],
+      "core/audits/dobetterweb/geolocation-on-start.js | title": [
+        "audits[geolocation-on-start].title"
+      ],
+      "core/audits/dobetterweb/geolocation-on-start.js | description": [
+        "audits[geolocation-on-start].description"
+      ],
+      "core/audits/dobetterweb/inspector-issues.js | title": [
+        "audits[inspector-issues].title"
+      ],
+      "core/audits/dobetterweb/inspector-issues.js | description": [
+        "audits[inspector-issues].description"
+      ],
+      "core/audits/dobetterweb/inspector-issues.js | columnIssueType": [
+        "audits[inspector-issues].details.headings[0].label"
+      ],
+      "core/audits/dobetterweb/js-libraries.js | title": [
+        "audits[js-libraries].title"
+      ],
+      "core/audits/dobetterweb/js-libraries.js | description": [
+        "audits[js-libraries].description"
+      ],
+      "core/audits/dobetterweb/notification-on-start.js | title": [
+        "audits[notification-on-start].title"
+      ],
+      "core/audits/dobetterweb/notification-on-start.js | description": [
+        "audits[notification-on-start].description"
+      ],
+      "core/audits/dobetterweb/paste-preventing-inputs.js | title": [
+        "audits[paste-preventing-inputs].title"
+      ],
+      "core/audits/dobetterweb/paste-preventing-inputs.js | description": [
+        "audits[paste-preventing-inputs].description"
+      ],
+      "core/audits/baseline.js | title": [
+        "audits.baseline.title"
+      ],
+      "core/audits/baseline.js | description": [
+        {
+          "values": {
+            "date": "2026-07-15"
+          },
+          "path": "audits.baseline.description"
+        }
+      ],
+      "core/audits/baseline.js | columnFeature": [
+        "audits.baseline.details.headings[0].label"
+      ],
+      "core/audits/baseline.js | columnStatus": [
+        "audits.baseline.details.headings[1].label"
+      ],
+      "core/audits/seo/meta-description.js | failureTitle": [
+        "audits[meta-description].title"
+      ],
+      "core/audits/seo/meta-description.js | description": [
+        "audits[meta-description].description"
+      ],
+      "core/audits/seo/http-status-code.js | title": [
+        "audits[http-status-code].title"
+      ],
+      "core/audits/seo/http-status-code.js | description": [
+        "audits[http-status-code].description"
+      ],
+      "core/audits/seo/link-text.js | title": [
+        "audits[link-text].title"
+      ],
+      "core/audits/seo/link-text.js | description": [
+        "audits[link-text].description"
+      ],
+      "core/audits/seo/crawlable-anchors.js | title": [
+        "audits[crawlable-anchors].title"
+      ],
+      "core/audits/seo/crawlable-anchors.js | description": [
+        "audits[crawlable-anchors].description"
+      ],
+      "core/audits/seo/crawlable-anchors.js | columnFailingLink": [
+        "audits[crawlable-anchors].details.headings[0].label"
+      ],
+      "core/audits/seo/is-crawlable.js | title": [
+        "audits[is-crawlable].title"
+      ],
+      "core/audits/seo/is-crawlable.js | description": [
+        "audits[is-crawlable].description"
+      ],
+      "core/audits/seo/robots-txt.js | failureTitle": [
+        "audits[robots-txt].title"
+      ],
+      "core/audits/seo/robots-txt.js | description": [
+        "audits[robots-txt].description"
+      ],
+      "core/audits/seo/robots-txt.js | displayValueValidationError": [
+        {
+          "values": {
+            "itemCount": 423
+          },
+          "path": "audits[robots-txt].displayValue"
+        }
+      ],
+      "core/audits/seo/hreflang.js | title": [
+        "audits.hreflang.title"
+      ],
+      "core/audits/seo/hreflang.js | description": [
+        "audits.hreflang.description"
+      ],
+      "core/audits/seo/canonical.js | title": [
+        "audits.canonical.title"
+      ],
+      "core/audits/seo/canonical.js | description": [
+        "audits.canonical.description"
+      ],
+      "core/audits/seo/manual/structured-data.js | title": [
+        "audits[structured-data].title"
+      ],
+      "core/audits/seo/manual/structured-data.js | description": [
+        "audits[structured-data].description"
+      ],
+      "core/config/default-config.js | bestPracticesCategoryTitle": [
+        "categories[best-practices].title"
+      ],
+      "core/config/default-config.js | seoCategoryTitle": [
+        "categories.seo.title"
+      ],
+      "core/config/default-config.js | seoCategoryDescription": [
+        "categories.seo.description"
+      ],
+      "core/config/default-config.js | seoCategoryManualDescription": [
+        "categories.seo.manualDescription"
+      ],
+      "core/config/default-config.js | metricGroupTitle": [
+        "categoryGroups.metrics.title"
+      ],
+      "core/config/default-config.js | insightsGroupTitle": [
+        "categoryGroups.insights.title"
+      ],
+      "core/config/default-config.js | insightsGroupDescription": [
+        "categoryGroups.insights.description"
+      ],
+      "core/config/default-config.js | diagnosticsGroupTitle": [
+        "categoryGroups.diagnostics.title"
+      ],
+      "core/config/default-config.js | diagnosticsGroupDescription": [
+        "categoryGroups.diagnostics.description"
+      ],
+      "core/config/default-config.js | a11yBestPracticesGroupTitle": [
+        "categoryGroups[a11y-best-practices].title"
+      ],
+      "core/config/default-config.js | a11yBestPracticesGroupDescription": [
+        "categoryGroups[a11y-best-practices].description"
+      ],
+      "core/config/default-config.js | a11yColorContrastGroupTitle": [
+        "categoryGroups[a11y-color-contrast].title"
+      ],
+      "core/config/default-config.js | a11yColorContrastGroupDescription": [
+        "categoryGroups[a11y-color-contrast].description"
+      ],
+      "core/config/default-config.js | a11yNamesLabelsGroupTitle": [
+        "categoryGroups[a11y-names-labels].title"
+      ],
+      "core/config/default-config.js | a11yNamesLabelsGroupDescription": [
+        "categoryGroups[a11y-names-labels].description"
+      ],
+      "core/config/default-config.js | a11yNavigationGroupTitle": [
+        "categoryGroups[a11y-navigation].title"
+      ],
+      "core/config/default-config.js | a11yNavigationGroupDescription": [
+        "categoryGroups[a11y-navigation].description"
+      ],
+      "core/config/default-config.js | a11yAriaGroupTitle": [
+        "categoryGroups[a11y-aria].title"
+      ],
+      "core/config/default-config.js | a11yAriaGroupDescription": [
+        "categoryGroups[a11y-aria].description"
+      ],
+      "core/config/default-config.js | a11yLanguageGroupTitle": [
+        "categoryGroups[a11y-language].title"
+      ],
+      "core/config/default-config.js | a11yLanguageGroupDescription": [
+        "categoryGroups[a11y-language].description"
+      ],
+      "core/config/default-config.js | a11yAudioVideoGroupTitle": [
+        "categoryGroups[a11y-audio-video].title"
+      ],
+      "core/config/default-config.js | a11yAudioVideoGroupDescription": [
+        "categoryGroups[a11y-audio-video].description"
+      ],
+      "core/config/default-config.js | a11yTablesListsVideoGroupTitle": [
+        "categoryGroups[a11y-tables-lists].title"
+      ],
+      "core/config/default-config.js | a11yTablesListsVideoGroupDescription": [
+        "categoryGroups[a11y-tables-lists].description"
+      ],
+      "core/config/default-config.js | seoMobileGroupTitle": [
+        "categoryGroups[seo-mobile].title"
+      ],
+      "core/config/default-config.js | seoMobileGroupDescription": [
+        "categoryGroups[seo-mobile].description"
+      ],
+      "core/config/default-config.js | seoContentGroupTitle": [
+        "categoryGroups[seo-content].title"
+      ],
+      "core/config/default-config.js | seoContentGroupDescription": [
+        "categoryGroups[seo-content].description"
+      ],
+      "core/config/default-config.js | seoCrawlingGroupTitle": [
+        "categoryGroups[seo-crawl].title"
+      ],
+      "core/config/default-config.js | seoCrawlingGroupDescription": [
+        "categoryGroups[seo-crawl].description"
+      ],
+      "core/config/default-config.js | bestPracticesTrustSafetyGroupTitle": [
+        "categoryGroups[best-practices-trust-safety].title"
+      ],
+      "core/config/default-config.js | bestPracticesUXGroupTitle": [
+        "categoryGroups[best-practices-ux].title"
+      ],
+      "core/config/default-config.js | bestPracticesBrowserCompatGroupTitle": [
+        "categoryGroups[best-practices-browser-compat].title"
+      ],
+      "core/config/default-config.js | bestPracticesGeneralGroupTitle": [
+        "categoryGroups[best-practices-general].title"
+      ],
+      "core/config/default-config.js | webmcpGroupTitle": [
+        "categoryGroups.webmcp.title"
+      ],
+      "core/config/default-config.js | webmcpGroupDescription": [
+        "categoryGroups.webmcp.description"
+      ],
+      "core/config/default-config.js | agentAccessibilityGroupTitle": [
+        "categoryGroups[agent-accessibility].title"
+      ],
+      "core/config/default-config.js | agentAccessibilityGroupDescription": [
+        "categoryGroups[agent-accessibility].description"
+      ]
+    }
+  }
+}

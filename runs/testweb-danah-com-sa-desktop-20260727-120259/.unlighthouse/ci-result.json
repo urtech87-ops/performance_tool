@@ -1,0 +1,3105 @@
+{
+  "summary": {
+    "score": 0.77,
+    "categories": {
+      "performance": {
+        "score": 0.38,
+        "scores": [
+          0.55,
+          0.55,
+          0.31,
+          0.37,
+          0.39,
+          0.39,
+          0.38,
+          0.37,
+          0.42,
+          0.4,
+          0.38,
+          0.33,
+          0.54,
+          0.47,
+          0.49,
+          0.46,
+          0.53,
+          0.54,
+          0.52,
+          0.54,
+          0.53,
+          0.38,
+          0.39,
+          0.38,
+          0.39,
+          0.39,
+          0.36,
+          0.37,
+          0.36,
+          0.37,
+          0.38,
+          0.38,
+          0.56,
+          0.38,
+          0.36,
+          0.37,
+          0.38,
+          0.36,
+          0.39,
+          0.35,
+          0.38,
+          0.36,
+          0.36,
+          0.36,
+          0.35,
+          0.38,
+          0.36,
+          0.36,
+          0.36,
+          0.36,
+          0.37,
+          0.36,
+          0.36,
+          0.36,
+          0.38
+        ],
+        "averageScore": 0.4
+      },
+      "accessibility": {
+        "score": 0.75,
+        "scores": [
+          0.9,
+          0.86,
+          0.86,
+          0.75,
+          0.78,
+          0.75,
+          0.75,
+          0.75,
+          0.75,
+          0.75,
+          0.75,
+          0.75,
+          0.77,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.75,
+          0.75,
+          0.86,
+          0.75,
+          0.75,
+          0.89,
+          0.89,
+          0.89,
+          0.86,
+          0.75,
+          0.75,
+          0.75,
+          0.75,
+          0.89,
+          0.75,
+          0.75,
+          0.89,
+          0.75,
+          0.89,
+          0.75,
+          0.89,
+          0.89,
+          0.89,
+          0.89,
+          0.75,
+          0.89,
+          0.89,
+          0.89,
+          0.89,
+          0.89,
+          0.89,
+          0.89,
+          0.89,
+          0.75
+        ],
+        "averageScore": 0.82
+      },
+      "best-practices": {
+        "score": 1,
+        "scores": [
+          0.92,
+          1,
+          1,
+          1,
+          0.96,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0.96,
+          0.96,
+          0.96,
+          0.96,
+          0.96,
+          0.96,
+          0.96,
+          0.96,
+          0.96,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          0.96,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "averageScore": 0.99
+      },
+      "seo": {
+        "score": 0.83,
+        "scores": [
+          0.83,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.83,
+          0.92,
+          0.83,
+          0.83,
+          0.83,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.83,
+          0.92,
+          0.92,
+          0.83,
+          0.92,
+          0.92,
+          0.83,
+          0.92,
+          0.92,
+          0.83,
+          0.92,
+          0.83,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.83,
+          0.92,
+          0.83,
+          0.92,
+          0.92,
+          0.92,
+          0.92,
+          0.83,
+          0.92,
+          0.83
+        ],
+        "averageScore": 0.89
+      }
+    },
+    "metrics": {
+      "largest-contentful-paint": {
+        "numericValue": 6769.948700000001,
+        "displayValue": "6.8 s",
+        "numericValues": [
+          21279.817999999996,
+          16930.454999999998,
+          11129.628,
+          19456.503499999988,
+          5837.4965,
+          6603.415399999999,
+          11448.613000000001,
+          7191.9063,
+          6909.779699999998,
+          8675.83555,
+          7392.4301,
+          17249.238799999992,
+          10648.799899999996,
+          10598.417600000004,
+          29266.368500000015,
+          26953.99689999999,
+          88376.79269999999,
+          88530.27660000001,
+          42107.2998,
+          90709.72929999998,
+          43758.49439999998,
+          21450.75890000002,
+          19965.336700000014,
+          6774.7463,
+          8669.1368,
+          5894.8255,
+          25515.247000000014,
+          5723.1045,
+          12599.678999999996,
+          11395.407800000003,
+          6911.5139,
+          8856.403299999996,
+          14695.573700000008,
+          13944.058599999993,
+          15440.784699999993,
+          6613.5473,
+          10813.5663,
+          9923.704100000004,
+          7226.7367,
+          8547.976900000001,
+          9911.033500000003,
+          7374.8946,
+          7347.493900000002,
+          8538.561599999997,
+          7482.664400000001,
+          10959.871399999998,
+          9019.6051,
+          9308.282399999998,
+          7371.041800000001,
+          17985.744899999994,
+          5848.009,
+          11549.355900000002,
+          9763.221800000001,
+          7368.560399999999,
+          6769.948700000001
+        ],
+        "averageNumericValue": 16883.92
+      },
+      "cumulative-layout-shift": {
+        "numericValue": 0.38599131495709654,
+        "displayValue": "0.386",
+        "numericValues": [
+          0.019673116773195574,
+          0.01908312173481598,
+          0.8238733981262587,
+          0.3768101728723404,
+          0.3700864036460613,
+          0.37796576350582267,
+          0.3699041445035461,
+          0.4252782971062078,
+          0.29325148875974083,
+          0.3314536342957418,
+          0.3942662630789774,
+          0.7100285466465283,
+          0.019664360972477604,
+          0.01994206578524939,
+          0.01954032046230628,
+          0.019943525085369056,
+          0.012933193240521846,
+          0.02427399819046785,
+          0.02042990981525261,
+          0.027315325569856694,
+          0.019786650322505327,
+          0.36478590907100955,
+          0.35384815197881087,
+          0.3975444039853487,
+          0.3417275487588652,
+          0.36640106092942826,
+          0.45415672950777813,
+          0.4566254269182501,
+          0.455649950310831,
+          0.4232069238409508,
+          0.3957819443349969,
+          0.39212234168417825,
+          0.03449651227271401,
+          0.367127472802294,
+          0.4537624803176897,
+          0.425677446042378,
+          0.3703964099575343,
+          0.45640198833289564,
+          0.36822480370589267,
+          0.4573297154364767,
+          0.3686659570090185,
+          0.4488019171920148,
+          0.4555001047412662,
+          0.4567528432456295,
+          0.4541853192401425,
+          0.36818244717333565,
+          0.4538404667753846,
+          0.45573256150950014,
+          0.46550010474126613,
+          0.4066666666666667,
+          0.45640101304614317,
+          0.4428242995906663,
+          0.45640101304614317,
+          0.4597579143135453,
+          0.38599131495709654
+        ],
+        "averageNumericValue": 0.34
+      },
+      "first-contentful-paint": {
+        "numericValue": 2714.4150999999997,
+        "displayValue": "2.7 s",
+        "numericValues": [
+          3930.46,
+          3625.4709999999995,
+          3944.3079999999995,
+          3613.1435,
+          3412.2685,
+          2686.0197999999996,
+          3247.3419999999996,
+          2694.3542999999995,
+          2654.6372999999994,
+          2685.1985999999997,
+          2723.4323,
+          2695.359699999999,
+          3741.8314999999993,
+          3620.2129,
+          6058.964600000004,
+          10776.4361,
+          3624.841099999999,
+          3602.6558,
+          3886.7998,
+          3691.4743,
+          3859.4732000000004,
+          2703.6339000000003,
+          2725.9571999999994,
+          2718.6760999999997,
+          2819.1368,
+          2730.3089000000004,
+          2708.9238,
+          2715.0325000000007,
+          2694.788,
+          2688.7978,
+          2694.9963000000002,
+          2699.7062999999994,
+          2705.7737000000006,
+          2705.1610999999994,
+          2701.5012000000006,
+          2712.5473,
+          2693.1054999999997,
+          2708.2049000000006,
+          2726.3047,
+          2680.8007000000007,
+          2697.132700000001,
+          2724.5784,
+          2695.3394000000008,
+          2671.0054999999993,
+          2691.9667999999997,
+          2712.0694,
+          2701.7533000000003,
+          2686.5371999999998,
+          2713.322600000001,
+          7213.613000000001,
+          2696.7111999999997,
+          2696.9369000000006,
+          2705.6744000000003,
+          2715.5032999999994,
+          2714.4150999999997
+        ],
+        "averageNumericValue": 3224.45
+      },
+      "total-blocking-time": {
+        "numericValue": 33.500000000000455,
+        "displayValue": "30 ms",
+        "numericValues": [
+          32,
+          26.5,
+          12,
+          8,
+          19.5,
+          1,
+          0,
+          39.5,
+          6,
+          2,
+          31,
+          1,
+          117,
+          238.5,
+          195.5,
+          250.5,
+          120,
+          114.5,
+          160.5,
+          114,
+          129,
+          39.5,
+          15.5,
+          39,
+          45,
+          39.499999999999545,
+          13.5,
+          35.5,
+          61.00000000000091,
+          47,
+          0,
+          7.5,
+          62.999999999999545,
+          17,
+          79.5,
+          2,
+          1,
+          28,
+          18.999999999999545,
+          84.99999999999955,
+          44.5,
+          23.999999999999545,
+          37.5,
+          36,
+          105.5,
+          60,
+          58,
+          33.5,
+          9.5,
+          20.5,
+          6.5,
+          34.5,
+          11.5,
+          48.5,
+          33.500000000000455
+        ],
+        "averageNumericValue": 51.25
+      },
+      "max-potential-fid": {
+        "numericValue": 68.00000000000045,
+        "displayValue": "70 ms",
+        "numericValues": [
+          82,
+          71,
+          64,
+          58,
+          89,
+          51,
+          48,
+          76,
+          56,
+          52,
+          64,
+          51,
+          266,
+          323,
+          289,
+          308,
+          195,
+          194,
+          238,
+          189,
+          238,
+          81,
+          63,
+          86,
+          76,
+          72,
+          67,
+          85,
+          106.00000000000182,
+          78,
+          50,
+          63,
+          94,
+          63,
+          115,
+          52,
+          51,
+          88,
+          65.99999999999955,
+          108,
+          84,
+          82,
+          95,
+          98,
+          127,
+          78,
+          92,
+          81,
+          69,
+          91,
+          63,
+          103,
+          73,
+          103,
+          68.00000000000045
+        ],
+        "averageNumericValue": 104.96
+      },
+      "interactive": {
+        "numericValue": 8455.223500000002,
+        "displayValue": "8.5 s",
+        "numericValues": [
+          22264.016599999995,
+          21673.767200000002,
+          17377.005400000002,
+          19457.95349999999,
+          8539.0975,
+          6603.4154,
+          11460.834300000002,
+          9035.178940000003,
+          6910.879699999999,
+          8684.888255000002,
+          9073.601900000001,
+          17249.238799999992,
+          10857.892464999997,
+          10979.575170000004,
+          174786.3031750002,
+          120436.75085999996,
+          88582.80442000003,
+          88614.55464000002,
+          186968.84980000003,
+          208742.76440000001,
+          187782.2581199999,
+          22639.87100000002,
+          20329.993960000014,
+          8670.227759999998,
+          8669.1368,
+          7085.214919999999,
+          29430.67236000001,
+          12263.724659999996,
+          14724.514624999998,
+          14984.672049999997,
+          6911.5139,
+          10697.458999999997,
+          16314.878200000003,
+          15873.778644999995,
+          17496.33402,
+          6613.5473,
+          10813.5663,
+          12029.006475000002,
+          8825.18718,
+          10992.516910000004,
+          11835.984440000004,
+          9146.012410000003,
+          9223.834850000003,
+          11645.223564999995,
+          9875.362620000004,
+          12734.23982,
+          11785.687485000002,
+          11831.46185,
+          14247.650879999994,
+          24770.448869999993,
+          10037.708499999999,
+          13173.93435,
+          12601.13534,
+          9480.479275000002,
+          8455.223500000002
+        ],
+        "averageNumericValue": 30405.31
+      }
+    }
+  },
+  "routes": [
+    {
+      "path": "/",
+      "score": 0.8,
+      "categories": {
+        "performance": {
+          "score": 0.55
+        },
+        "accessibility": {
+          "score": 0.9
+        },
+        "best-practices": {
+          "score": 0.92
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 21279.817999999996,
+          "displayValue": "21.3 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.019673116773195574,
+          "displayValue": "0.02"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3930.46,
+          "displayValue": "3.9 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 32,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 82,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 22264.016599999995,
+          "displayValue": "22.3 s"
+        }
+      }
+    },
+    {
+      "path": "/aboutus/",
+      "score": 0.83,
+      "categories": {
+        "performance": {
+          "score": 0.55
+        },
+        "accessibility": {
+          "score": 0.86
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 16930.454999999998,
+          "displayValue": "16.9 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.01908312173481598,
+          "displayValue": "0.019"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3625.4709999999995,
+          "displayValue": "3.6 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 26.5,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 71,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 21673.767200000002,
+          "displayValue": "21.7 s"
+        }
+      }
+    },
+    {
+      "path": "/awards-recognitions/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.31
+        },
+        "accessibility": {
+          "score": 0.86
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 11129.628,
+          "displayValue": "11.1 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.8238733981262587,
+          "displayValue": "0.824"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3944.3079999999995,
+          "displayValue": "3.9 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 12,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 64,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 17377.005400000002,
+          "displayValue": "17.4 s"
+        }
+      }
+    },
+    {
+      "path": "/careers/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.37
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 19456.503499999988,
+          "displayValue": "19.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3768101728723404,
+          "displayValue": "0.377"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3613.1435,
+          "displayValue": "3.6 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 8,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 58,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 19457.95349999999,
+          "displayValue": "19.5 s"
+        }
+      }
+    },
+    {
+      "path": "/contact-us/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.39
+        },
+        "accessibility": {
+          "score": 0.78
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 5837.4965,
+          "displayValue": "5.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3700864036460613,
+          "displayValue": "0.37"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3412.2685,
+          "displayValue": "3.4 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 19.5,
+          "displayValue": "20 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 89,
+          "displayValue": "90 ms"
+        },
+        "interactive": {
+          "numericValue": 8539.0975,
+          "displayValue": "8.5 s"
+        }
+      }
+    },
+    {
+      "path": "/entertainment/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.39
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6603.415399999999,
+          "displayValue": "6.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.37796576350582267,
+          "displayValue": "0.378"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2686.0197999999996,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 1,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 51,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 6603.4154,
+          "displayValue": "6.6 s"
+        }
+      }
+    },
+    {
+      "path": "/faq/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 11448.613000000001,
+          "displayValue": "11.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3699041445035461,
+          "displayValue": "0.37"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3247.3419999999996,
+          "displayValue": "3.2 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 0,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 48,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 11460.834300000002,
+          "displayValue": "11.5 s"
+        }
+      }
+    },
+    {
+      "path": "/fb/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.37
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7191.9063,
+          "displayValue": "7.2 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4252782971062078,
+          "displayValue": "0.425"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2694.3542999999995,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 39.5,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 76,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 9035.178940000003,
+          "displayValue": "9.0 s"
+        }
+      }
+    },
+    {
+      "path": "/jobDetails",
+      "score": 0.75,
+      "categories": {
+        "performance": {
+          "score": 0.42
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6909.779699999998,
+          "displayValue": "6.9 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.29325148875974083,
+          "displayValue": "0.293"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2654.6372999999994,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 6,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 56,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 6910.879699999999,
+          "displayValue": "6.9 s"
+        }
+      }
+    },
+    {
+      "path": "/jobdetails/",
+      "score": 0.75,
+      "categories": {
+        "performance": {
+          "score": 0.4
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 8675.83555,
+          "displayValue": "8.7 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3314536342957418,
+          "displayValue": "0.331"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2685.1985999999997,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 2,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 52,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 8684.888255000002,
+          "displayValue": "8.7 s"
+        }
+      }
+    },
+    {
+      "path": "/jobs/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7392.4301,
+          "displayValue": "7.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3942662630789774,
+          "displayValue": "0.394"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2723.4323,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 31,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 64,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 9073.601900000001,
+          "displayValue": "9.1 s"
+        }
+      }
+    },
+    {
+      "path": "/leadership/",
+      "score": 0.75,
+      "categories": {
+        "performance": {
+          "score": 0.33
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 17249.238799999992,
+          "displayValue": "17.2 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.7100285466465283,
+          "displayValue": "0.71"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2695.359699999999,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 1,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 51,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 17249.238799999992,
+          "displayValue": "17.2 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/",
+      "score": 0.8,
+      "categories": {
+        "performance": {
+          "score": 0.54
+        },
+        "accessibility": {
+          "score": 0.77
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 10648.799899999996,
+          "displayValue": "10.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.019664360972477604,
+          "displayValue": "0.02"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3741.8314999999993,
+          "displayValue": "3.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 117,
+          "displayValue": "120 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 266,
+          "displayValue": "270 ms"
+        },
+        "interactive": {
+          "numericValue": 10857.892464999997,
+          "displayValue": "10.9 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/?model=model1",
+      "score": 0.8,
+      "categories": {
+        "performance": {
+          "score": 0.47
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 10598.417600000004,
+          "displayValue": "10.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.01994206578524939,
+          "displayValue": "0.02"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3620.2129,
+          "displayValue": "3.6 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 238.5,
+          "displayValue": "240 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 323,
+          "displayValue": "320 ms"
+        },
+        "interactive": {
+          "numericValue": 10979.575170000004,
+          "displayValue": "11.0 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/?model=model2&amp;region=central&amp;project=al-rashid-center",
+      "score": 0.8,
+      "categories": {
+        "performance": {
+          "score": 0.49
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 29266.368500000015,
+          "displayValue": "29.3 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.01954032046230628,
+          "displayValue": "0.02"
+        },
+        "first-contentful-paint": {
+          "numericValue": 6058.964600000004,
+          "displayValue": "6.1 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 195.5,
+          "displayValue": "200 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 289,
+          "displayValue": "290 ms"
+        },
+        "interactive": {
+          "numericValue": 174786.3031750002,
+          "displayValue": "174.8 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/?model=model2&amp;region=central&amp;project=al-rashid-tower",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.46
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 26953.99689999999,
+          "displayValue": "27.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.019943525085369056,
+          "displayValue": "0.02"
+        },
+        "first-contentful-paint": {
+          "numericValue": 10776.4361,
+          "displayValue": "10.8 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 250.5,
+          "displayValue": "250 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 308,
+          "displayValue": "310 ms"
+        },
+        "interactive": {
+          "numericValue": 120436.75085999996,
+          "displayValue": "120.4 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/?model=model2&amp;region=central&amp;project=al-sulai-shops",
+      "score": 0.81,
+      "categories": {
+        "performance": {
+          "score": 0.53
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 88376.79269999999,
+          "displayValue": "88.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.012933193240521846,
+          "displayValue": "0.013"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3624.841099999999,
+          "displayValue": "3.6 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 120,
+          "displayValue": "120 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 195,
+          "displayValue": "200 ms"
+        },
+        "interactive": {
+          "numericValue": 88582.80442000003,
+          "displayValue": "88.6 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/?model=model2&amp;region=eastern&amp;project=dana-office-tower",
+      "score": 0.81,
+      "categories": {
+        "performance": {
+          "score": 0.54
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 88530.27660000001,
+          "displayValue": "88.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.02427399819046785,
+          "displayValue": "0.024"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3602.6558,
+          "displayValue": "3.6 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 114.5,
+          "displayValue": "110 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 194,
+          "displayValue": "190 ms"
+        },
+        "interactive": {
+          "numericValue": 88614.55464000002,
+          "displayValue": "88.6 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/?model=model3&amp;region=eastern&amp;project=dana-village",
+      "score": 0.81,
+      "categories": {
+        "performance": {
+          "score": 0.52
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 42107.2998,
+          "displayValue": "42.1 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.02042990981525261,
+          "displayValue": "0.02"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3886.7998,
+          "displayValue": "3.9 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 160.5,
+          "displayValue": "160 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 238,
+          "displayValue": "240 ms"
+        },
+        "interactive": {
+          "numericValue": 186968.84980000003,
+          "displayValue": "187.0 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/?model=model3&amp;region=eastern&amp;project=nada-village",
+      "score": 0.81,
+      "categories": {
+        "performance": {
+          "score": 0.54
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 90709.72929999998,
+          "displayValue": "90.7 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.027315325569856694,
+          "displayValue": "0.027"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3691.4743,
+          "displayValue": "3.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 114,
+          "displayValue": "110 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 189,
+          "displayValue": "190 ms"
+        },
+        "interactive": {
+          "numericValue": 208742.76440000001,
+          "displayValue": "208.7 s"
+        }
+      }
+    },
+    {
+      "path": "/leasing/?model=model3&amp;region=eastern&amp;project=residential-towers",
+      "score": 0.81,
+      "categories": {
+        "performance": {
+          "score": 0.53
+        },
+        "accessibility": {
+          "score": 0.83
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 43758.49439999998,
+          "displayValue": "43.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.019786650322505327,
+          "displayValue": "0.02"
+        },
+        "first-contentful-paint": {
+          "numericValue": 3859.4732000000004,
+          "displayValue": "3.9 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 129,
+          "displayValue": "130 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 238,
+          "displayValue": "240 ms"
+        },
+        "interactive": {
+          "numericValue": 187782.2581199999,
+          "displayValue": "187.8 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 21450.75890000002,
+          "displayValue": "21.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.36478590907100955,
+          "displayValue": "0.365"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2703.6339000000003,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 39.5,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 81,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 22639.87100000002,
+          "displayValue": "22.6 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/al-rashid-mall-khobar/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.39
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 19965.336700000014,
+          "displayValue": "20.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.35384815197881087,
+          "displayValue": "0.354"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2725.9571999999994,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 15.5,
+          "displayValue": "20 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 63,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 20329.993960000014,
+          "displayValue": "20.3 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/heritage-commission-agreement/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.86
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6774.7463,
+          "displayValue": "6.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3975444039853487,
+          "displayValue": "0.398"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2718.6760999999997,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 39,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 86,
+          "displayValue": "90 ms"
+        },
+        "interactive": {
+          "numericValue": 8670.227759999998,
+          "displayValue": "8.7 s"
+        }
+      }
+    },
+    {
+      "path": "/media-center/three-awards-for-al-rashid-mall-khobar/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.39
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 8669.1368,
+          "displayValue": "8.7 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3417275487588652,
+          "displayValue": "0.342"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2819.1368,
+          "displayValue": "2.8 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 45,
+          "displayValue": "50 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 76,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 8669.1368,
+          "displayValue": "8.7 s"
+        }
+      }
+    },
+    {
+      "path": "/new-projects/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.39
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 5894.8255,
+          "displayValue": "5.9 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.36640106092942826,
+          "displayValue": "0.366"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2730.3089000000004,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 39.499999999999545,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 72,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 7085.214919999999,
+          "displayValue": "7.1 s"
+        }
+      }
+    },
+    {
+      "path": "/new-projects/al-rashid-mall-redevelopment-al-khobar/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 25515.247000000014,
+          "displayValue": "25.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.45415672950777813,
+          "displayValue": "0.454"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2708.9238,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 13.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 67,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 29430.67236000001,
+          "displayValue": "29.4 s"
+        }
+      }
+    },
+    {
+      "path": "/new-projects/al-saadah-district-project/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.37
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 5723.1045,
+          "displayValue": "5.7 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4566254269182501,
+          "displayValue": "0.457"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2715.0325000000007,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 35.5,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 85,
+          "displayValue": "90 ms"
+        },
+        "interactive": {
+          "numericValue": 12263.724659999996,
+          "displayValue": "12.3 s"
+        }
+      }
+    },
+    {
+      "path": "/new-projects/the-palm-square/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 12599.678999999996,
+          "displayValue": "12.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.455649950310831,
+          "displayValue": "0.456"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2694.788,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 61.00000000000091,
+          "displayValue": "60 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 106.00000000000182,
+          "displayValue": "110 ms"
+        },
+        "interactive": {
+          "numericValue": 14724.514624999998,
+          "displayValue": "14.7 s"
+        }
+      }
+    },
+    {
+      "path": "/our-commitment/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.37
+        },
+        "accessibility": {
+          "score": 0.86
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 11395.407800000003,
+          "displayValue": "11.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4232069238409508,
+          "displayValue": "0.423"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2688.7978,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 47,
+          "displayValue": "50 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 78,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 14984.672049999997,
+          "displayValue": "15.0 s"
+        }
+      }
+    },
+    {
+      "path": "/pmo-investment/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6911.5139,
+          "displayValue": "6.9 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3957819443349969,
+          "displayValue": "0.396"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2694.9963000000002,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 0,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 50,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 6911.5139,
+          "displayValue": "6.9 s"
+        }
+      }
+    },
+    {
+      "path": "/privacy-policy/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 8856.403299999996,
+          "displayValue": "8.9 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.39212234168417825,
+          "displayValue": "0.392"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2699.7062999999994,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 7.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 63,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 10697.458999999997,
+          "displayValue": "10.7 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/",
+      "score": 0.81,
+      "categories": {
+        "performance": {
+          "score": 0.56
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 14695.573700000008,
+          "displayValue": "14.7 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.03449651227271401,
+          "displayValue": "0.034"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2705.7737000000006,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 62.999999999999545,
+          "displayValue": "60 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 94,
+          "displayValue": "90 ms"
+        },
+        "interactive": {
+          "numericValue": 16314.878200000003,
+          "displayValue": "16.3 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/commercial/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 13944.058599999993,
+          "displayValue": "13.9 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.367127472802294,
+          "displayValue": "0.367"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2705.1610999999994,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 17,
+          "displayValue": "20 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 63,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 15873.778644999995,
+          "displayValue": "15.9 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/commercial/al-rashid-mall/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 15440.784699999993,
+          "displayValue": "15.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4537624803176897,
+          "displayValue": "0.454"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2701.5012000000006,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 79.5,
+          "displayValue": "80 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 115,
+          "displayValue": "120 ms"
+        },
+        "interactive": {
+          "numericValue": 17496.33402,
+          "displayValue": "17.5 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/facility-mgt/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.37
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6613.5473,
+          "displayValue": "6.6 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.425677446042378,
+          "displayValue": "0.426"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2712.5473,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 2,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 52,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 6613.5473,
+          "displayValue": "6.6 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/hospitality/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 10813.5663,
+          "displayValue": "10.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3703964099575343,
+          "displayValue": "0.37"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2693.1054999999997,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 1,
+          "displayValue": "0 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 51,
+          "displayValue": "50 ms"
+        },
+        "interactive": {
+          "numericValue": 10813.5663,
+          "displayValue": "10.8 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/hospitality/grand-hyatt-hotel/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 9923.704100000004,
+          "displayValue": "9.9 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.45640198833289564,
+          "displayValue": "0.456"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2708.2049000000006,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 28,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 88,
+          "displayValue": "90 ms"
+        },
+        "interactive": {
+          "numericValue": 12029.006475000002,
+          "displayValue": "12.0 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/labor-housing/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.39
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7226.7367,
+          "displayValue": "7.2 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.36822480370589267,
+          "displayValue": "0.368"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2726.3047,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 18.999999999999545,
+          "displayValue": "20 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 65.99999999999955,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 8825.18718,
+          "displayValue": "8.8 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/labor-housing/al-sulai-labor-housing/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.35
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 8547.976900000001,
+          "displayValue": "8.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4573297154364767,
+          "displayValue": "0.457"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2680.8007000000007,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 84.99999999999955,
+          "displayValue": "80 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 108,
+          "displayValue": "110 ms"
+        },
+        "interactive": {
+          "numericValue": 10992.516910000004,
+          "displayValue": "11.0 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/offices-building-and-shops/",
+      "score": 0.76,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 9911.033500000003,
+          "displayValue": "9.9 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.3686659570090185,
+          "displayValue": "0.369"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2697.132700000001,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 44.5,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 84,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 11835.984440000004,
+          "displayValue": "11.8 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/offices-building-and-shops/al-rashid-center/",
+      "score": 0.78,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 0.96
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7374.8946,
+          "displayValue": "7.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4488019171920148,
+          "displayValue": "0.449"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2724.5784,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 23.999999999999545,
+          "displayValue": "20 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 82,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 9146.012410000003,
+          "displayValue": "9.1 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/offices-building-and-shops/al-rashid-tower/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7347.493900000002,
+          "displayValue": "7.3 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4555001047412662,
+          "displayValue": "0.456"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2695.3394000000008,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 37.5,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 95,
+          "displayValue": "100 ms"
+        },
+        "interactive": {
+          "numericValue": 9223.834850000003,
+          "displayValue": "9.2 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/offices-building-and-shops/al-sulai-shops/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 8538.561599999997,
+          "displayValue": "8.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4567528432456295,
+          "displayValue": "0.457"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2671.0054999999993,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 36,
+          "displayValue": "40 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 98,
+          "displayValue": "100 ms"
+        },
+        "interactive": {
+          "numericValue": 11645.223564999995,
+          "displayValue": "11.6 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/offices-building-and-shops/dana-tower/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.35
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7482.664400000001,
+          "displayValue": "7.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4541853192401425,
+          "displayValue": "0.454"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2691.9667999999997,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 105.5,
+          "displayValue": "110 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 127,
+          "displayValue": "130 ms"
+        },
+        "interactive": {
+          "numericValue": 9875.362620000004,
+          "displayValue": "9.9 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 10959.871399999998,
+          "displayValue": "11.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.36818244717333565,
+          "displayValue": "0.368"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2712.0694,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 60,
+          "displayValue": "60 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 78,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 12734.23982,
+          "displayValue": "12.7 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/al-dana-village/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 9019.6051,
+          "displayValue": "9.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4538404667753846,
+          "displayValue": "0.454"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2701.7533000000003,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 58,
+          "displayValue": "60 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 92,
+          "displayValue": "90 ms"
+        },
+        "interactive": {
+          "numericValue": 11785.687485000002,
+          "displayValue": "11.8 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/al-nada-village/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 9308.282399999998,
+          "displayValue": "9.3 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.45573256150950014,
+          "displayValue": "0.456"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2686.5371999999998,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 33.5,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 81,
+          "displayValue": "80 ms"
+        },
+        "interactive": {
+          "numericValue": 11831.46185,
+          "displayValue": "11.8 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/al-rashid-center/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7371.041800000001,
+          "displayValue": "7.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.46550010474126613,
+          "displayValue": "0.466"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2713.322600000001,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 9.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 69,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 14247.650879999994,
+          "displayValue": "14.2 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/al-rashid-tower/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 17985.744899999994,
+          "displayValue": "18.0 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4066666666666667,
+          "displayValue": "0.407"
+        },
+        "first-contentful-paint": {
+          "numericValue": 7213.613000000001,
+          "displayValue": "7.2 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 20.5,
+          "displayValue": "20 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 91,
+          "displayValue": "90 ms"
+        },
+        "interactive": {
+          "numericValue": 24770.448869999993,
+          "displayValue": "24.8 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/al-yamama-village-1/",
+      "score": 0.8,
+      "categories": {
+        "performance": {
+          "score": 0.37
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 5848.009,
+          "displayValue": "5.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.45640101304614317,
+          "displayValue": "0.456"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2696.7111999999997,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 6.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 63,
+          "displayValue": "60 ms"
+        },
+        "interactive": {
+          "numericValue": 10037.708499999999,
+          "displayValue": "10.0 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/al-yamama-village-2/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 11549.355900000002,
+          "displayValue": "11.5 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4428242995906663,
+          "displayValue": "0.443"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2696.9369000000006,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 34.5,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 103,
+          "displayValue": "100 ms"
+        },
+        "interactive": {
+          "numericValue": 13173.93435,
+          "displayValue": "13.2 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/al-yamama-village-3/",
+      "score": 0.77,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 9763.221800000001,
+          "displayValue": "9.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.45640101304614317,
+          "displayValue": "0.456"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2705.6744000000003,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 11.5,
+          "displayValue": "10 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 73,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 12601.13534,
+          "displayValue": "12.6 s"
+        }
+      }
+    },
+    {
+      "path": "/sectors/residential/danah-residential-towers/",
+      "score": 0.79,
+      "categories": {
+        "performance": {
+          "score": 0.36
+        },
+        "accessibility": {
+          "score": 0.89
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.92
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 7368.560399999999,
+          "displayValue": "7.4 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.4597579143135453,
+          "displayValue": "0.46"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2715.5032999999994,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 48.5,
+          "displayValue": "50 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 103,
+          "displayValue": "100 ms"
+        },
+        "interactive": {
+          "numericValue": 9480.479275000002,
+          "displayValue": "9.5 s"
+        }
+      }
+    },
+    {
+      "path": "/terms-and-conditions/",
+      "score": 0.74,
+      "categories": {
+        "performance": {
+          "score": 0.38
+        },
+        "accessibility": {
+          "score": 0.75
+        },
+        "best-practices": {
+          "score": 1
+        },
+        "seo": {
+          "score": 0.83
+        }
+      },
+      "metrics": {
+        "largest-contentful-paint": {
+          "numericValue": 6769.948700000001,
+          "displayValue": "6.8 s"
+        },
+        "cumulative-layout-shift": {
+          "numericValue": 0.38599131495709654,
+          "displayValue": "0.386"
+        },
+        "first-contentful-paint": {
+          "numericValue": 2714.4150999999997,
+          "displayValue": "2.7 s"
+        },
+        "total-blocking-time": {
+          "numericValue": 33.500000000000455,
+          "displayValue": "30 ms"
+        },
+        "max-potential-fid": {
+          "numericValue": 68.00000000000045,
+          "displayValue": "70 ms"
+        },
+        "interactive": {
+          "numericValue": 8455.223500000002,
+          "displayValue": "8.5 s"
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "metrics": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint",
+        "description": "Largest Contentful Paint marks the time at which the largest text or image is painted. [Learn more about the Largest Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-largest-contentful-paint/)",
+        "numericUnit": "millisecond"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "description": "Cumulative Layout Shift measures the movement of visible elements within the viewport. [Learn more about the Cumulative Layout Shift metric](https://web.dev/articles/cls).",
+        "numericUnit": "unitless"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "description": "First Contentful Paint marks the time at which the first text or image is painted. [Learn more about the First Contentful Paint metric](https://developer.chrome.com/docs/lighthouse/performance/first-contentful-paint/).",
+        "numericUnit": "millisecond"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "description": "Sum of all time periods between FCP and Time to Interactive, when task length exceeded 50ms, expressed in milliseconds. [Learn more about the Total Blocking Time metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-total-blocking-time/).",
+        "numericUnit": "millisecond"
+      },
+      "max-potential-fid": {
+        "id": "max-potential-fid",
+        "title": "Max Potential First Input Delay",
+        "description": "The maximum potential First Input Delay that your users could experience is the duration of the longest task. [Learn more about the Maximum Potential First Input Delay metric](https://developer.chrome.com/docs/lighthouse/performance/lighthouse-max-potential-fid/).",
+        "numericUnit": "millisecond"
+      },
+      "interactive": {
+        "id": "interactive",
+        "title": "Time to Interactive",
+        "description": "Time to Interactive is the amount of time it takes for the page to become fully interactive. [Learn more about the Time to Interactive metric](https://developer.chrome.com/docs/lighthouse/performance/interactive/).",
+        "numericUnit": "millisecond"
+      }
+    },
+    "categories": {
+      "performance": {
+        "id": "performance",
+        "title": "Performance"
+      },
+      "accessibility": {
+        "id": "accessibility",
+        "title": "Accessibility"
+      },
+      "best-practices": {
+        "id": "best-practices",
+        "title": "Best Practices"
+      },
+      "seo": {
+        "id": "seo",
+        "title": "SEO"
+      }
+    }
+  }
+}
