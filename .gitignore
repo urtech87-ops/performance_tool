@@ -1,0 +1,4 @@
+# Python bytecode / test caches (generated locally, not part of the tool)
+__pycache__/
+*.py[cod]
+.pytest_cache/
