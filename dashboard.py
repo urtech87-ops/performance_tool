@@ -264,7 +264,8 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         else:
             log("No performance data produced.")
     else:
-        log("Security-only run - skipping performance report.")
+        log("No Lighthouse category selected - skipping the deep audit "
+            "and the performance report.")
 
     # --- optional security scan (additive; independent of performance) ---
     if security and not DRYRUN:
@@ -312,6 +313,17 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
     return run_name
 
 
+# Report files a run can produce, in the order the UI offers them.
+REPORT_FILES = ["report.html", "report.pdf", "accessibility.html", "security.html"]
+
+
+def run_artifacts(run_name):
+    """The REPORT_FILES a finished run actually wrote (so the UI only offers
+    buttons that lead somewhere)."""
+    run_dir = RUNS_DIR / run_name
+    return [f for f in REPORT_FILES if (run_dir / f).is_file()]
+
+
 # ----------------------------- routes -----------------------------
 
 @app.route("/")
@@ -352,7 +364,8 @@ def scan():
                                     concurrency, security, categories, log,
                                     a11y=a11y, standards=standards)
             if run_name:
-                q.put(f"__DONE__/runs/{run_name}/")
+                q.put("__DONE__" + json.dumps({"base": f"/runs/{run_name}/",
+                                               "files": run_artifacts(run_name)}))
             else:
                 q.put("__FAIL__")
         except Exception as e:
@@ -637,6 +650,19 @@ PAGE = """<!DOCTYPE html>
   var go = document.getElementById("go");
   var statusEl = document.getElementById("status");
   var spin = document.getElementById("spin");
+  var scanning = false;   // one scan at a time - the button stays disabled meanwhile
+
+  function setBusy(on){
+    scanning = on;
+    go.disabled = on;
+    go.textContent = on ? "Scanning\u2026" : "Generate report";
+  }
+
+  function showLink(id, href){
+    var el = document.getElementById(id);
+    if(href){ el.href = href; el.style.display = "inline-flex"; }
+    else { el.removeAttribute("href"); el.style.display = "none"; }
+  }
 
   function selectedCats(){
     var out = [];
@@ -651,6 +677,7 @@ PAGE = """<!DOCTYPE html>
   }
 
   go.onclick = function(){
+    if(scanning){ return; }              // a scan is already streaming
     var url = document.getElementById("url").value.trim();
     if(!url){ alert("Enter a URL first."); return; }
     var cats = selectedCats();
@@ -672,7 +699,7 @@ PAGE = """<!DOCTYPE html>
     spin.style.display = "inline-block";
     statusEl.textContent = "Scanning\u2026";
     document.getElementById("results").style.display = "none";
-    go.disabled = true; go.textContent = "Scanning\u2026";
+    setBusy(true);
 
     var qs = new URLSearchParams({ url:url, device:device, deep:deep, samples:samples,
       max_pages:maxpages, concurrency:concurrency, security:security, categories:lh.join(","),
@@ -683,28 +710,49 @@ PAGE = """<!DOCTYPE html>
 
     es.addEventListener("done", function(e){
       es.close(); reset();
-      var base = e.data;                       // e.g. /runs/<name>/
-      var primary = anyLH ? base + "report.html"
-                  : security ? base + "security.html" : base + "accessibility.html";
-      document.getElementById("frame").src = primary;
-      document.getElementById("cap").textContent = anyLH ? "Performance report preview"
-                  : security ? "Security report preview" : "Accessibility report preview";
-      var open = document.getElementById("openlink");
-      open.href = primary; open.style.display = "inline-flex";
-      var pdf = document.getElementById("pdflink");
-      if(anyLH){ pdf.href = base + "report.pdf"; pdf.style.display = "inline-flex"; } else { pdf.style.display = "none"; }
-      var sec = document.getElementById("seclink");
-      if(security){ sec.href = base + "security.html"; sec.style.display = "inline-flex"; } else { sec.style.display = "none"; }
-      var acc = document.getElementById("a11ylink");
-      if(a11y){ acc.href = base + "accessibility.html"; acc.style.display = "inline-flex"; } else { acc.style.display = "none"; }
+      // payload: {"base":"/runs/<name>/","files":[...files the run wrote...]}
+      var base = e.data, files = null;
+      try {
+        var payload = JSON.parse(e.data);
+        if(payload && payload.base){ base = payload.base; files = payload.files || []; }
+      } catch(err){ /* older payload: the bare run folder */ }
+
+      function has(name){
+        if(files !== null){ return files.indexOf(name) !== -1; }
+        if(name === "report.html" || name === "report.pdf"){ return !!anyLH; }
+        if(name === "accessibility.html"){ return !!a11y; }
+        return !!security;
+      }
+
+      // preview the performance report when a Lighthouse category ran,
+      // otherwise the accessibility one, otherwise security.
+      var primary = null, cap = "Report preview";
+      if(anyLH && has("report.html")){ primary = "report.html"; cap = "Performance report preview"; }
+      else if(has("accessibility.html")){ primary = "accessibility.html"; cap = "Accessibility report preview"; }
+      else if(has("security.html")){ primary = "security.html"; cap = "Security report preview"; }
+      else if(has("report.html")){ primary = "report.html"; cap = "Performance report preview"; }
+
+      spin.style.display = "none";
+      if(!primary){
+        ["openlink","pdflink","seclink","a11ylink"].forEach(function(id){ showLink(id, null); });
+        statusEl.textContent = "Done - no report was produced (see the log).";
+        document.getElementById("results").style.display = "none";
+        return;
+      }
+      document.getElementById("frame").src = base + primary;
+      document.getElementById("cap").textContent = cap;
+      showLink("openlink", base + primary);
+      showLink("pdflink", has("report.pdf") ? base + "report.pdf" : null);
+      showLink("seclink", has("security.html") ? base + "security.html" : null);
+      showLink("a11ylink", has("accessibility.html") ? base + "accessibility.html" : null);
       document.getElementById("results").style.display = "block";
-      statusEl.textContent = "Done."; spin.style.display = "none";
+      statusEl.textContent = "Done.";
     });
     es.addEventListener("fail", function(){ es.close(); reset(); statusEl.textContent = "Scan failed."; spin.style.display="none";
       logEl.textContent += "\\n--- scan failed ---\\n"; });
     es.onerror = function(){ es.close(); reset(); spin.style.display="none"; };
 
-    function reset(){ go.disabled = false; go.textContent = "Generate report"; }
+    function reset(){ setBusy(false); }
   };
 </script>
 </body></html>"""
