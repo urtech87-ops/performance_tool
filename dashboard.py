@@ -13,9 +13,14 @@ Engine:
      full reports containing the itemized failing audits + recommendations.
   3. consolidate_report.py rolls everything into one HTML (and optional PDF).
 
+Optional, self-contained add-ons (each writes its own page into the run folder):
+  - security_scan.py       -> security.html       (passive header/TLS checks)
+  - accessibility_scan.py  -> accessibility.html  (axe-core WCAG / legal standards)
+
 Requirements on the machine that RUNS this:
   - Python 3.9+  ->  pip install flask
-  - Node.js (for `npx unlighthouse-ci` and `npx lighthouse`)
+  - Node.js (for `npx unlighthouse-ci`, `npx lighthouse` and, if the optional
+    accessibility scan is used, `npx @axe-core/cli`)
   - Chrome / Edge / Brave (Lighthouse drives it; also used for PDF)
 
 Run:
@@ -143,10 +148,13 @@ def make_mock(run_dir, url, device, deep):
             }), encoding="utf-8")
 
 
-def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, categories, log):
+def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, categories, log,
+                 a11y=False, standards=None):
     """Generator-free worker: does the whole scan, returns the run folder name.
     `categories` = selected Lighthouse categories (subset of
-    performance/accessibility/best-practices/seo). Empty means security-only."""
+    performance/accessibility/best-practices/seo). Empty means security-only.
+    `a11y` turns on the optional axe-core accessibility-compliance scan and
+    `standards` picks which legal frameworks it reports on."""
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_name = f"{slugify(url)}-{device}-{stamp}"
     run_dir = RUNS_DIR / run_name
@@ -274,6 +282,25 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         (run_dir / "security.html").write_text("<html><body>dry-run security</body></html>", encoding="utf-8")
         log("[dry-run] security report fabricated")
 
+    # --- optional accessibility scan (additive; independent of performance) ---
+    if a11y and not DRYRUN:
+        try:
+            import accessibility_scan as a11y_mod
+            base = origin_of(url)
+            a11y_urls = [urljoin(base + "/", ((r.get("path") or "/").replace("&amp;", "&")).lstrip("/"))
+                         for r in routes[:max_pages]] or [url]
+            a11y_html = a11y_mod.scan_site(url, a11y_urls, standards=standards,
+                                           concurrency=concurrency,
+                                           work_dir=run_dir / "axe", log=log)
+            (run_dir / "accessibility.html").write_text(a11y_html, encoding="utf-8")
+            log("Accessibility report ready.")
+        except Exception as e:
+            log(f"(Accessibility scan failed: {e})")
+    elif a11y and DRYRUN:
+        (run_dir / "accessibility.html").write_text(
+            "<html><body>dry-run accessibility</body></html>", encoding="utf-8")
+        log("[dry-run] accessibility report fabricated")
+
     # optional PDF (only when a performance report exists)
     if not DRYRUN and lh_on and report_html.exists():
         try:
@@ -302,9 +329,12 @@ def scan():
     max_pages = max(1, min(200, int(request.args.get("max_pages", 30) or 30)))
     concurrency = max(1, min(6, int(request.args.get("concurrency", 3) or 3)))
     security = request.args.get("security", "0") == "1"
+    a11y = request.args.get("a11y", "0") == "1"
     valid_cats = ["performance", "accessibility", "best-practices", "seo"]
     raw = (request.args.get("categories") or "").split(",")
     categories = [c for c in valid_cats if c in raw]  # keep canonical order, drop junk
+    # accessibility_scan owns the canonical standard ids; just sanitize the tokens
+    standards = re.findall(r"[a-z0-9_]+", (request.args.get("standards") or "").lower())[:40]
 
     if not url:
         return Response("data: ERR No URL provided\n\n", mimetype="text/event-stream")
@@ -319,7 +349,8 @@ def scan():
     def worker():
         try:
             run_name = run_pipeline(url, device, samples, deep, max_pages,
-                                    concurrency, security, categories, log)
+                                    concurrency, security, categories, log,
+                                    a11y=a11y, standards=standards)
             if run_name:
                 q.put(f"__DONE__/runs/{run_name}/")
             else:
@@ -369,7 +400,7 @@ PAGE = """<!DOCTYPE html>
   :root{
     --bg:#0b1020; --bg2:#0e1530; --panel:#ffffff; --ink:#0f172a; --muted:#64748b;
     --line:#e6e9ef; --brand:#4f46e5; --brand2:#7c3aed; --ring:rgba(79,70,229,.35);
-    --perf:#f59e0b; --a11y:#0ea5e9; --bp:#10b981; --seo:#8b5cf6; --sec:#ef4444;
+    --perf:#f59e0b; --a11y:#0ea5e9; --bp:#10b981; --seo:#8b5cf6; --sec:#ef4444; --wcag:#6b4fc4;
     --shadow:0 10px 40px rgba(15,23,42,.10), 0 2px 8px rgba(15,23,42,.05);
   }
   *{box-sizing:border-box}
@@ -422,6 +453,8 @@ PAGE = """<!DOCTYPE html>
   .chip[data-cat=performance]{--c:var(--perf)} .chip[data-cat=accessibility]{--c:var(--a11y)}
   .chip[data-cat=best-practices]{--c:var(--bp)} .chip[data-cat=seo]{--c:var(--seo)}
   .chip[data-cat=security]{--c:var(--sec)}
+  .chip[data-cat=a11y-standards]{--c:var(--wcag)}
+  .chip.std{--c:var(--wcag);padding:8px 12px;font-size:12.5px}
   /* advanced */
   details.adv{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
   details.adv summary{cursor:pointer;font:600 13px inherit;color:var(--brand);list-style:none;display:flex;align-items:center;gap:6px}
@@ -465,6 +498,7 @@ PAGE = """<!DOCTYPE html>
   .btn:hover{border-color:var(--brand);color:var(--brand)}
   .btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:0}
   .btn.sec{border-color:#fecaca;color:var(--sec)} .btn.sec:hover{background:#fef2f2}
+  .btn.wcag{border-color:#ddd0f7;color:var(--wcag)} .btn.wcag:hover{background:#f6f2ff}
   .btn svg{width:15px;height:15px;stroke:currentColor}
   .frame{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
   .frame .cap{padding:9px 14px;font:600 12px inherit;color:var(--muted);border-bottom:1px solid var(--line);
@@ -478,7 +512,7 @@ PAGE = """<!DOCTYPE html>
     <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 4-6"/></svg></div>
     <div>
       <h1>Site Performance &amp; Security</h1>
-      <p>Whole-site audits &mdash; performance, accessibility, SEO, best practices &amp; security.</p>
+      <p>Whole-site audits &mdash; performance, accessibility, SEO, best practices, security &amp; WCAG standards.</p>
     </div>
     <span class="pill">&#9679; Runs locally &middot; private</span>
   </div>
@@ -509,7 +543,34 @@ PAGE = """<!DOCTYPE html>
         <div class="chip on" data-cat="best-practices"><span class="dot"></span>Best Practices</div>
         <div class="chip on" data-cat="seo"><span class="dot"></span>SEO</div>
         <div class="chip" data-cat="security"><span class="dot"></span>Security</div>
+        <div class="chip" data-cat="a11y-standards"><span class="dot"></span>Accessibility standards</div>
       </div>
+    </div>
+
+    <div id="stdwrap" style="margin-top:22px;display:none">
+      <label class="lbl">Accessibility standards &mdash; frameworks to report</label>
+      <div class="cats" id="stds">
+        <div class="chip std" data-std="wcag20a"><span class="dot"></span>WCAG 2.0 A</div>
+        <div class="chip std" data-std="wcag20aa"><span class="dot"></span>WCAG 2.0 AA</div>
+        <div class="chip std" data-std="wcag20aaa"><span class="dot"></span>WCAG 2.0 AAA</div>
+        <div class="chip std" data-std="wcag21a"><span class="dot"></span>WCAG 2.1 A</div>
+        <div class="chip std on" data-std="wcag21aa"><span class="dot"></span>WCAG 2.1 AA</div>
+        <div class="chip std" data-std="wcag21aaa"><span class="dot"></span>WCAG 2.1 AAA</div>
+        <div class="chip std" data-std="wcag22a"><span class="dot"></span>WCAG 2.2 A</div>
+        <div class="chip std" data-std="wcag22aa"><span class="dot"></span>WCAG 2.2 AA</div>
+        <div class="chip std" data-std="wcag22aaa"><span class="dot"></span>WCAG 2.2 AAA</div>
+        <div class="chip std on" data-std="section508"><span class="dot"></span>Section 508 (US)</div>
+        <div class="chip std on" data-std="en301549"><span class="dot"></span>EN 301 549 (EU)</div>
+        <div class="chip std on" data-std="ada"><span class="dot"></span>ADA Title III (US)</div>
+        <div class="chip std" data-std="unruh"><span class="dot"></span>California Unruh</div>
+        <div class="chip std" data-std="aoda"><span class="dot"></span>Ontario AODA</div>
+        <div class="chip std" data-std="uk_equality"><span class="dot"></span>UK Equality Act</div>
+        <div class="chip std" data-std="au_dda"><span class="dot"></span>Australian DDA</div>
+        <div class="chip std" data-std="il_5568"><span class="dot"></span>Israeli 5568</div>
+        <div class="chip std" data-std="ca_aca"><span class="dot"></span>Canada ACA</div>
+        <div class="chip std" data-std="atag20"><span class="dot"></span>ATAG 2.0</div>
+      </div>
+      <span class="hint" style="display:block;margin-top:10px">Automated axe-core checks only &mdash; the report states automated results per framework, never a legal compliance verdict. ATAG 2.0 is reported as not applicable (it governs authoring tools, not pages).</span>
     </div>
 
     <details class="adv">
@@ -538,6 +599,7 @@ PAGE = """<!DOCTYPE html>
       <a class="btn primary" id="openlink" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M14 3h7v7M21 3l-9 9M10 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>Open full report</a>
       <a class="btn" id="pdflink" href="#" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>PDF</a>
       <a class="btn sec" id="seclink" href="#" target="_blank" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3l7 4v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V7z"/></svg>Security report</a>
+      <a class="btn wcag" id="a11ylink" href="#" target="_blank" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="4.5" r="1.6"/><path d="M4.5 8.2h15M12 8.2v5m0 0l-3.4 6.6M12 13.2l3.4 6.6"/></svg>Accessibility report</a>
     </div>
     <div class="frame">
       <div class="cap"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg><span id="cap">Report preview</span></div>
@@ -556,9 +618,19 @@ PAGE = """<!DOCTYPE html>
       document.querySelectorAll("#device button").forEach(function(x){ x.classList.toggle("on", x===b); }); };
   });
   // category chips toggle
+  var stdwrap = document.getElementById("stdwrap");
+  function syncStdWrap(){
+    var on = document.querySelector('#cats .chip[data-cat="a11y-standards"]').classList.contains("on");
+    stdwrap.style.display = on ? "block" : "none";
+  }
   document.querySelectorAll("#cats .chip").forEach(function(ch){
+    ch.onclick = function(){ ch.classList.toggle("on"); syncStdWrap(); };
+  });
+  // standards chips toggle
+  document.querySelectorAll("#stds .chip").forEach(function(ch){
     ch.onclick = function(){ ch.classList.toggle("on"); };
   });
+  syncStdWrap();
 
   var logwrap = document.getElementById("logwrap");
   var logEl = document.getElementById("log");
@@ -572,13 +644,22 @@ PAGE = """<!DOCTYPE html>
     return out;
   }
 
+  function selectedStds(){
+    var out = [];
+    document.querySelectorAll("#stds .chip.on").forEach(function(c){ out.push(c.dataset.std); });
+    return out;
+  }
+
   go.onclick = function(){
     var url = document.getElementById("url").value.trim();
     if(!url){ alert("Enter a URL first."); return; }
     var cats = selectedCats();
     if(cats.length === 0){ alert("Select at least one category."); return; }
     var security = cats.indexOf("security") !== -1 ? 1 : 0;
-    var lh = cats.filter(function(c){ return c !== "security"; });
+    var a11y = cats.indexOf("a11y-standards") !== -1 ? 1 : 0;
+    var stds = selectedStds();
+    if(a11y && stds.length === 0){ alert("Pick at least one accessibility standard."); return; }
+    var lh = cats.filter(function(c){ return c !== "security" && c !== "a11y-standards"; });
     var anyLH = lh.length > 0;
 
     var deep = document.getElementById("deep").checked ? 1 : 0;
@@ -594,7 +675,8 @@ PAGE = """<!DOCTYPE html>
     go.disabled = true; go.textContent = "Scanning\u2026";
 
     var qs = new URLSearchParams({ url:url, device:device, deep:deep, samples:samples,
-      max_pages:maxpages, concurrency:concurrency, security:security, categories:lh.join(",") });
+      max_pages:maxpages, concurrency:concurrency, security:security, categories:lh.join(","),
+      a11y:a11y, standards:stds.join(",") });
     var es = new EventSource("/scan?" + qs.toString());
 
     es.onmessage = function(e){ logEl.textContent += e.data + "\\n"; logEl.scrollTop = logEl.scrollHeight; };
@@ -602,15 +684,19 @@ PAGE = """<!DOCTYPE html>
     es.addEventListener("done", function(e){
       es.close(); reset();
       var base = e.data;                       // e.g. /runs/<name>/
-      var primary = anyLH ? base + "report.html" : base + "security.html";
+      var primary = anyLH ? base + "report.html"
+                  : security ? base + "security.html" : base + "accessibility.html";
       document.getElementById("frame").src = primary;
-      document.getElementById("cap").textContent = anyLH ? "Performance report preview" : "Security report preview";
+      document.getElementById("cap").textContent = anyLH ? "Performance report preview"
+                  : security ? "Security report preview" : "Accessibility report preview";
       var open = document.getElementById("openlink");
       open.href = primary; open.style.display = "inline-flex";
       var pdf = document.getElementById("pdflink");
       if(anyLH){ pdf.href = base + "report.pdf"; pdf.style.display = "inline-flex"; } else { pdf.style.display = "none"; }
       var sec = document.getElementById("seclink");
       if(security){ sec.href = base + "security.html"; sec.style.display = "inline-flex"; } else { sec.style.display = "none"; }
+      var acc = document.getElementById("a11ylink");
+      if(a11y){ acc.href = base + "accessibility.html"; acc.style.display = "inline-flex"; } else { acc.style.display = "none"; }
       document.getElementById("results").style.display = "block";
       statusEl.textContent = "Done."; spin.style.display = "none";
     });
