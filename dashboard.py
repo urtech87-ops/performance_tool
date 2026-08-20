@@ -381,6 +381,12 @@ def scan():
     threading.Thread(target=worker, daemon=True).start()
 
     def stream():
+        # Never let the browser silently re-open this stream: EventSource
+        # retries a dropped connection on its own, and since a connection to
+        # /scan STARTS a scan, that retry would quietly audit the whole site a
+        # second time. The page opens a new stream only when the user asks for
+        # another scan.
+        yield "retry: 86400000\n\n"
         while True:
             msg = q.get()
             if msg is None:
@@ -500,6 +506,8 @@ PAGE = """<!DOCTYPE html>
   .go:disabled{opacity:.6;cursor:default;transform:none}
   .go svg{width:18px;height:18px;stroke:#fff}
   .hint{color:var(--muted);font-size:12.5px}
+  button.btn{cursor:pointer;font-family:inherit}
+  button.btn:disabled{opacity:.6;cursor:default}
   /* log */
   .logwrap{margin-top:20px;display:none}
   .logbar{display:flex;align-items:center;gap:10px;font:600 13px inherit;color:#334155;margin-bottom:8px}
@@ -601,8 +609,9 @@ PAGE = """<!DOCTYPE html>
     </details>
 
     <div class="cta">
-      <button class="go" id="go" type="button"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Generate report</button>
-      <span class="hint">Deep audits run each page through Lighthouse &mdash; large sites take a few minutes.</span>
+      <button class="go" id="go" type="button"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span id="golabel">Generate report</span></button>
+      <button class="btn" id="rescan" type="button" style="display:none"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M20 11a8 8 0 1 0-2.4 5.7M20 5v6h-6"/></svg>Run a fresh scan</button>
+      <span class="hint" id="hint">Deep audits run each page through Lighthouse &mdash; large sites take a few minutes.</span>
     </div>
 
     <div class="logwrap" id="logwrap">
@@ -652,14 +661,40 @@ PAGE = """<!DOCTYPE html>
   var logwrap = document.getElementById("logwrap");
   var logEl = document.getElementById("log");
   var go = document.getElementById("go");
+  var goLabel = document.getElementById("golabel");
+  var rescan = document.getElementById("rescan");
+  var hint = document.getElementById("hint");
   var statusEl = document.getElementById("status");
   var spin = document.getElementById("spin");
+  var results = document.getElementById("results");
   var scanning = false;   // one scan at a time - the button stays disabled meanwhile
+
+  // The finished run currently on screen, tagged with the settings that
+  // produced it. While the form still matches, the button OPENS that report
+  // instead of scanning the whole site again - a scan is expensive and the
+  // report is already sitting in the run folder.
+  var lastRun = null;
+
+  var SCAN_HINT = "Deep audits run each page through Lighthouse \\u2014 large sites take a few minutes.";
+  var VIEW_HINT = "This report is already generated \\u2014 the button just opens it. " +
+                  "Use \\u201cRun a fresh scan\\u201d to audit the site again.";
 
   function setBusy(on){
     scanning = on;
     go.disabled = on;
-    go.textContent = on ? "Scanning\u2026" : "Generate report";
+    rescan.disabled = on;
+    if(on){ goLabel.textContent = "Scanning\\u2026"; rescan.style.display = "none"; }
+    else { refreshButton(); }
+  }
+
+  // Whether the settings on screen already have a report decides what the
+  // button does, so it is recomputed after every change to the form.
+  function refreshButton(){
+    if(scanning){ return; }
+    var ready = !!(lastRun && lastRun.qs === formQS());
+    goLabel.textContent = ready ? "View report" : "Generate report";
+    rescan.style.display = ready ? "inline-flex" : "none";
+    hint.textContent = ready ? VIEW_HINT : SCAN_HINT;
   }
 
   function showLink(id, href){
@@ -680,40 +715,87 @@ PAGE = """<!DOCTYPE html>
     return out;
   }
 
-  go.onclick = function(){
-    if(scanning){ return; }              // a scan is already streaming
-    var url = document.getElementById("url").value.trim();
-    if(!url){ alert("Enter a URL first."); return; }
+  // Everything the form says, plus the exact query string a scan would use -
+  // that string is also the identity of a finished run.
+  function readForm(){
     var cats = selectedCats();
-    if(cats.length === 0){ alert("Select at least one category."); return; }
-    var security = cats.indexOf("security") !== -1 ? 1 : 0;
-    var a11y = cats.indexOf("a11y-standards") !== -1 ? 1 : 0;
-    var stds = selectedStds();
-    if(a11y && stds.length === 0){ alert("Pick at least one accessibility standard."); return; }
     var lh = cats.filter(function(c){ return c !== "security" && c !== "a11y-standards"; });
-    var anyLH = lh.length > 0;
+    var f = {
+      url: document.getElementById("url").value.trim(),
+      cats: cats,
+      lh: lh,
+      stds: selectedStds(),
+      anyLH: lh.length > 0,
+      a11y: cats.indexOf("a11y-standards") !== -1 ? 1 : 0,
+      security: cats.indexOf("security") !== -1 ? 1 : 0,
+      deep: document.getElementById("deep").checked ? 1 : 0,
+      samples: document.getElementById("samples").value || 1,
+      maxpages: document.getElementById("maxpages").value || 30,
+      concurrency: document.getElementById("concurrency").value || 3
+    };
+    f.qs = new URLSearchParams({ url:f.url, device:device, deep:f.deep, samples:f.samples,
+      max_pages:f.maxpages, concurrency:f.concurrency, security:f.security,
+      categories:f.lh.join(","), a11y:f.a11y, standards:f.stds.join(",") }).toString();
+    return f;
+  }
 
-    var deep = document.getElementById("deep").checked ? 1 : 0;
-    var samples = document.getElementById("samples").value || 1;
-    var maxpages = document.getElementById("maxpages").value || 30;
-    var concurrency = document.getElementById("concurrency").value || 3;
+  function formQS(){ return readForm().qs; }
 
+  function problemWith(f){
+    if(!f.url){ return "Enter a URL first."; }
+    if(f.cats.length === 0){ return "Select at least one category."; }
+    if(f.a11y && f.stds.length === 0){ return "Pick at least one accessibility standard."; }
+    return null;
+  }
+
+  // Put a finished run on screen. Returns false when the run produced nothing
+  // to show, so the caller can say so instead of pointing at an empty frame.
+  function showResults(run){
+    function has(name){
+      if(run.files !== null){ return run.files.indexOf(name) !== -1; }
+      if(name === "report.html" || name === "report.pdf"){ return !!run.anyLH; }
+      if(name === "accessibility.html"){ return !!run.a11y; }
+      return !!run.security;
+    }
+
+    // preview the performance report when a Lighthouse category ran,
+    // otherwise the accessibility one, otherwise security.
+    var primary = null, cap = "Report preview";
+    if(run.anyLH && has("report.html")){ primary = "report.html"; cap = "Performance report preview"; }
+    else if(has("accessibility.html")){ primary = "accessibility.html"; cap = "Accessibility report preview"; }
+    else if(has("security.html")){ primary = "security.html"; cap = "Security report preview"; }
+    else if(has("report.html")){ primary = "report.html"; cap = "Performance report preview"; }
+
+    if(!primary){
+      ["openlink","pdflink","seclink","a11ylink"].forEach(function(id){ showLink(id, null); });
+      results.style.display = "none";
+      return false;
+    }
+    document.getElementById("frame").src = run.base + primary;
+    document.getElementById("cap").textContent = cap;
+    showLink("openlink", run.base + primary);
+    showLink("pdflink", has("report.pdf") ? run.base + "report.pdf" : null);
+    showLink("seclink", has("security.html") ? run.base + "security.html" : null);
+    showLink("a11ylink", has("accessibility.html") ? run.base + "accessibility.html" : null);
+    results.style.display = "block";
+    return true;
+  }
+
+  function startScan(f){
     logwrap.style.display = "block";
     logEl.textContent = "";
     spin.style.display = "inline-block";
-    statusEl.textContent = "Scanning\u2026";
-    document.getElementById("results").style.display = "none";
+    statusEl.textContent = "Scanning\\u2026";
+    results.style.display = "none";
+    lastRun = null;                      // the report on screen is being replaced
     setBusy(true);
 
-    var qs = new URLSearchParams({ url:url, device:device, deep:deep, samples:samples,
-      max_pages:maxpages, concurrency:concurrency, security:security, categories:lh.join(","),
-      a11y:a11y, standards:stds.join(",") });
-    var es = new EventSource("/scan?" + qs.toString());
+    var es = new EventSource("/scan?" + f.qs);
 
     es.onmessage = function(e){ logEl.textContent += e.data + "\\n"; logEl.scrollTop = logEl.scrollHeight; };
 
     es.addEventListener("done", function(e){
-      es.close(); reset();
+      es.close();
       // payload: {"base":"/runs/<name>/","files":[...files the run wrote...]}
       var base = e.data, files = null;
       try {
@@ -721,43 +803,51 @@ PAGE = """<!DOCTYPE html>
         if(payload && payload.base){ base = payload.base; files = payload.files || []; }
       } catch(err){ /* older payload: the bare run folder */ }
 
-      function has(name){
-        if(files !== null){ return files.indexOf(name) !== -1; }
-        if(name === "report.html" || name === "report.pdf"){ return !!anyLH; }
-        if(name === "accessibility.html"){ return !!a11y; }
-        return !!security;
-      }
-
-      // preview the performance report when a Lighthouse category ran,
-      // otherwise the accessibility one, otherwise security.
-      var primary = null, cap = "Report preview";
-      if(anyLH && has("report.html")){ primary = "report.html"; cap = "Performance report preview"; }
-      else if(has("accessibility.html")){ primary = "accessibility.html"; cap = "Accessibility report preview"; }
-      else if(has("security.html")){ primary = "security.html"; cap = "Security report preview"; }
-      else if(has("report.html")){ primary = "report.html"; cap = "Performance report preview"; }
-
+      var run = { qs: f.qs, base: base, files: files,
+                  anyLH: f.anyLH, a11y: f.a11y, security: f.security };
       spin.style.display = "none";
-      if(!primary){
-        ["openlink","pdflink","seclink","a11ylink"].forEach(function(id){ showLink(id, null); });
+      if(showResults(run)){
+        lastRun = run;                   // from here the button opens it, never re-scans
+        statusEl.textContent = "Done.";
+      } else {
         statusEl.textContent = "Done - no report was produced (see the log).";
-        document.getElementById("results").style.display = "none";
-        return;
       }
-      document.getElementById("frame").src = base + primary;
-      document.getElementById("cap").textContent = cap;
-      showLink("openlink", base + primary);
-      showLink("pdflink", has("report.pdf") ? base + "report.pdf" : null);
-      showLink("seclink", has("security.html") ? base + "security.html" : null);
-      showLink("a11ylink", has("accessibility.html") ? base + "accessibility.html" : null);
-      document.getElementById("results").style.display = "block";
-      statusEl.textContent = "Done.";
+      setBusy(false);
     });
-    es.addEventListener("fail", function(){ es.close(); reset(); statusEl.textContent = "Scan failed."; spin.style.display="none";
-      logEl.textContent += "\\n--- scan failed ---\\n"; });
-    es.onerror = function(){ es.close(); reset(); spin.style.display="none"; };
 
-    function reset(){ setBusy(false); }
+    es.addEventListener("fail", function(){ es.close(); setBusy(false);
+      statusEl.textContent = "Scan failed."; spin.style.display="none";
+      logEl.textContent += "\\n--- scan failed ---\\n"; });
+    es.onerror = function(){ es.close(); setBusy(false); spin.style.display="none"; };
+  }
+
+  go.onclick = function(){
+    if(scanning){ return; }              // a scan is already streaming
+    var f = readForm();
+    var problem = problemWith(f);
+    if(problem){ alert(problem); return; }
+    if(lastRun && lastRun.qs === f.qs){  // these settings already have a report
+      showResults(lastRun);
+      results.scrollIntoView({behavior:"smooth", block:"start"});
+      return;
+    }
+    startScan(f);
   };
+
+  rescan.onclick = function(){           // the explicit "audit it again" path
+    if(scanning){ return; }
+    var f = readForm();
+    var problem = problemWith(f);
+    if(problem){ alert(problem); return; }
+    startScan(f);
+  };
+
+  // Editing anything can make the finished run stop matching the form, so the
+  // button re-decides after every interaction with the page.
+  ["input", "change", "click"].forEach(function(evt){
+    document.addEventListener(evt, refreshButton);
+  });
+  refreshButton();
 </script>
 </body></html>"""
 

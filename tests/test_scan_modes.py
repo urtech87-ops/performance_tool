@@ -252,7 +252,7 @@ def test_a_failed_run_still_reports_fail(client, monkeypatch):
 
 def test_ui_picks_the_primary_report_by_priority():
     page = dashboard.PAGE
-    assert 'if(anyLH && has("report.html"))' in page
+    assert 'if(run.anyLH && has("report.html"))' in page
     assert 'else if(has("accessibility.html"))' in page
     assert 'else if(has("security.html"))' in page
 
@@ -269,7 +269,7 @@ def test_ui_blocks_a_second_scan_while_one_runs():
     assert "var scanning = false;" in page
     assert "if(scanning){ return; }" in page
     assert "setBusy(true);" in page
-    assert "function reset(){ setBusy(false); }" in page
     # re-enabled on every terminal event
     for evt in ('addEventListener("done"', 'addEventListener("fail"', "es.onerror"):
         assert evt in page
+    assert page.count("setBusy(false)") >= 3

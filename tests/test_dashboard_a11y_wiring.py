@@ -206,3 +206,67 @@ def test_ui_keeps_the_existing_controls():
 def test_ui_never_promises_legal_compliance():
     page = dashboard.PAGE
     assert "never a legal compliance verdict" in page
+
+
+# --------------------------------------------------------------------------
+# a finished report is opened, not re-scanned
+# --------------------------------------------------------------------------
+# Clicking "Generate report" after a scan finished used to start the whole scan
+# again: the button had exactly one behaviour, and the finished run was not
+# remembered. Now a completed run is kept with the settings that produced it,
+# and the button opens it while those settings still match.
+
+def test_ui_remembers_the_finished_run_with_the_settings_that_produced_it():
+    page = dashboard.PAGE
+    assert "var lastRun = null;" in page
+    # the run is tagged with the query string that produced it ...
+    assert "var run = { qs: f.qs, base: base, files: files," in page
+    # ... and only becomes the remembered run once it has something to show
+    assert "if(showResults(run)){" in page
+    assert "lastRun = run;" in page
+
+
+def test_ui_opens_the_existing_report_instead_of_scanning_again():
+    page = dashboard.PAGE
+    click = page.split("go.onclick = function(){")[1].split("};")[0]
+    # the short-circuit comes before any scan is started
+    assert "if(lastRun && lastRun.qs === f.qs){" in click
+    assert click.index("showResults(lastRun)") < click.index("startScan(f)")
+    assert "scrollIntoView" in click
+    # and only startScan ever opens the stream that runs a scan
+    assert "EventSource" not in click
+    assert page.count("new EventSource(") == 1
+
+
+def test_ui_offers_an_explicit_way_to_scan_again():
+    page = dashboard.PAGE
+    assert 'id="rescan"' in page
+    assert "rescan.onclick = function(){" in page
+    rescan = page.split("rescan.onclick = function(){")[1].split("};")[0]
+    assert "startScan(f)" in rescan          # always a fresh scan, never the cache
+
+
+def test_ui_button_says_what_it_will_do():
+    page = dashboard.PAGE
+    assert 'id="golabel"' in page
+    assert 'goLabel.textContent = ready ? "View report" : "Generate report";' in page
+    # changing anything in the form re-decides, so the label cannot go stale
+    assert 'document.addEventListener(evt, refreshButton);' in page
+    assert "lastRun = null;                      // the report on screen is being replaced" in page
+
+
+def test_ui_keeps_the_icon_when_the_button_label_changes():
+    """setBusy used to overwrite the button's textContent, which threw the SVG
+    away on the first click; the label now lives in its own span."""
+    page = dashboard.PAGE
+    assert "go.textContent" not in page
+    assert 'goLabel.textContent = "Scanning' in page
+
+
+def test_the_scan_stream_tells_the_browser_not_to_reconnect(client, captured_pipeline):
+    """EventSource retries a dropped stream by itself, and a connection to
+    /scan starts a scan - so an unsuppressed retry re-runs the whole audit."""
+    body = client.get("/scan?url=https://x.test&categories=performance").get_data(as_text=True)
+    assert body.startswith("retry: ")
+    assert int(body.split("retry: ")[1].split("\n")[0]) >= 3600000
+    assert len(captured_pipeline) == 1
