@@ -22,6 +22,9 @@ Requirements on the machine that RUNS this:
   - Node.js (for `npx unlighthouse-ci`, `npx lighthouse` and, if the optional
     accessibility scan is used, `npx @axe-core/cli`)
   - Chrome / Edge / Brave (Lighthouse drives it; also used for PDF)
+  - the accessibility scan additionally needs a ChromeDriver matching the
+    installed Chrome - `npx browser-driver-manager install chrome` provides
+    one, or set CHROMEDRIVER_PATH / CHROME_PATH to point at your own
 
 Run:
     pip install flask
