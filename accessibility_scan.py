@@ -2,8 +2,9 @@
 """
 Automated accessibility / WCAG compliance scanner (standalone module).
 
-Runs axe-core (via the pinned `@axe-core/cli` npm package) against every
-discovered page, then rolls the raw rule violations up into:
+Runs axe-core (via `@axe-core/playwright`, driving Playwright's own bundled
+Chromium) against every discovered page, then rolls the raw rule violations up
+into:
 
   1. a per-standard panel - each legal framework is mapped to the WCAG scope
      it points at, and its verdict is computed by filtering the violations to
@@ -22,9 +23,12 @@ Failures are counted, the runner's own stdout/stderr is logged verbatim, and a
 run that analyzed zero pages reports every standard as "Not determined" rather
 than as clean.
 
-Requires Node.js plus a Chrome/Chromium and a matching ChromeDriver; the CLI is
-fetched with `npx --ignore-scripts` and pointed at the driver we locate, so a
-blocked driver download cannot take the whole scan down with it.
+Requires Node.js and nothing else: the browser is Playwright's own Chromium,
+fetched on first use. Playwright ships that browser and the client that drives
+it in one release, so the two cannot drift apart - which is what killed the
+previous ChromeDriver-based runner every time Chrome auto-updated underneath it
+("session not created: This version of ChromeDriver only supports Chrome
+version N / Current browser version is N-1").
 
 Used by dashboard.py; also runnable directly:
     python accessibility_scan.py https://example.com -o accessibility.html
@@ -39,6 +43,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -49,10 +54,28 @@ from urllib.parse import urlparse
 
 # Pinned so a run is reproducible and the report can state exactly what ran.
 AXE_CORE_VERSION = "4.13.0"
-AXE_CLI_PACKAGE = f"@axe-core/cli@{AXE_CORE_VERSION}"
 
+# The two npm packages the Node runner needs. @axe-core/playwright is versioned
+# in lockstep with axe-core itself, so it is pinned to the same number the
+# report prints. playwright is a range on purpose: it ships the browser build
+# and the client that speaks to it in one release, so any 1.x is internally
+# consistent - and the newest one is the release whose browser is still
+# downloadable.
+RUNNER_DEPS = {
+    "@axe-core/playwright": AXE_CORE_VERSION,
+    "playwright": "^1.55.0",
+}
+
+NODE = "node.exe" if os.name == "nt" else "node"
+NPM = "npm.cmd" if os.name == "nt" else "npm"
 NPX = "npx.cmd" if os.name == "nt" else "npx"
-PER_PAGE_TIMEOUT = 150  # seconds per page
+
+# The per-page runner (see its own header for the stdout contract).
+RUNNER_JS = Path(__file__).resolve().parent / "axe_playwright_runner.js"
+RESULT_MARKER = "__AXE_RESULT__"
+
+PER_PAGE_TIMEOUT = 150   # seconds per page
+INSTALL_TIMEOUT = 900    # npm install / browser download - once per machine
 
 # Tags axe is always asked to evaluate (a selected standard may add to these).
 RUN_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa",
@@ -61,34 +84,22 @@ RUN_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa",
 IMPACT_ORDER = ["critical", "serious", "moderate", "minor"]
 
 
-def _axe_cmd():
-    """Prefer a globally installed `axe`; fall back to the pinned npx package.
-
-    `--ignore-scripts` matters: @axe-core/cli depends on the `chromedriver` npm
-    package, whose install script downloads a driver binary from Google. Behind
-    a proxy, on a locked-down Windows box, or when the download 404s for the
-    current channel, that script exits 1 - npm then aborts the whole `npx`
-    invocation before axe ever starts, printing nothing at the default log
-    level. Skipping install scripts gets the CLI itself; we locate ChromeDriver
-    ourselves and hand axe the path (see find_chromedriver).
-    """
-    exe = shutil.which("axe") or shutil.which("axe.cmd")
-    return [exe] if exe else [NPX, "--yes", "--ignore-scripts", AXE_CLI_PACKAGE]
-
-
-AXE = _axe_cmd()
-
-
-def scan_env():
+def scan_env(node_path=None):
     """Env for scan subprocesses: relax Node TLS so sites with an incomplete
-    certificate chain (which browsers tolerate but Node rejects) still scan."""
+    certificate chain (which browsers tolerate but Node rejects) still scan,
+    and put the runner's own node_modules on Node's resolution path so the
+    script can live in this repo while its packages live in a cache dir."""
     env = os.environ.copy()
     env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+    if node_path:
+        existing = env.get("NODE_PATH")
+        env["NODE_PATH"] = os.pathsep.join(
+            [str(node_path)] + ([existing] if existing else []))
     return env
 
 
 # --------------------------------------------------------------------------
-# runner output + browser/driver discovery
+# runner output + the Node/Playwright runner itself
 # --------------------------------------------------------------------------
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
@@ -99,24 +110,6 @@ OUTPUT_MAX_COLS = 400
 # npm's own upgrade nag - dropping it keeps the real error visible.
 _NOISE = ("Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED",
           "(Use `node --trace-warnings", "npm notice", "npm warn")
-
-# Where Chrome / ChromeDriver usually live when they are not on PATH. Windows
-# is the case that matters: chrome.exe is essentially never on PATH there.
-WINDOWS_CHROME_PATHS = (
-    r"%ProgramFiles%\Google\Chrome\Application\chrome.exe",
-    r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe",
-    r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe",
-    r"%ProgramFiles%\Chromium\Application\chrome.exe",
-    r"%LOCALAPPDATA%\Chromium\Application\chrome.exe",
-)
-WINDOWS_CHROMEDRIVER_PATHS = (
-    r"%LOCALAPPDATA%\ChromeDriver\chromedriver.exe",
-    r"%ProgramFiles%\Google\Chrome\Application\chromedriver.exe",
-    r"%ProgramFiles%\chromedriver\chromedriver.exe",
-    r"C:\chromedriver\chromedriver.exe",
-)
-POSIX_CHROME_NAMES = ("google-chrome", "google-chrome-stable", "chrome",
-                      "chromium", "chromium-browser")
 
 
 def clean_output(text):
@@ -137,120 +130,175 @@ def clean_output(text):
     return "\n".join(lines)
 
 
-def _first_existing(paths, names=()):
-    """First path that is a file; a directory is searched for `names`."""
-    for raw in paths:
-        if not raw:
-            continue
-        expanded = os.path.expandvars(os.path.expanduser(str(raw)))
-        if "%" in expanded:       # an unset Windows variable - not a real path
-            continue
-        candidate = Path(expanded)
-        if candidate.is_file():
-            return str(candidate)
-        if candidate.is_dir():
-            for name in names:
-                inner = candidate / name
-                if inner.is_file():
-                    return str(inner)
-    return None
+# What run_axe needs to start a page: the script, and the environment that lets
+# Node find its packages. Built once per scan by ensure_runner().
+Runner = namedtuple("Runner", "script env home")
 
 
-def find_chromedriver():
-    """Absolute path to a ChromeDriver binary, or None.
+def runner_home():
+    """Directory holding the runner's npm packages.
 
-    axe drives headless Chrome through ChromeDriver. When one is on the machine
-    we hand axe the exact path instead of relying on the copy npm would have
-    installed next to the CLI - that copy is missing whenever its download was
-    blocked, and mismatched with the local Chrome whenever it was not.
+    Kept out of the repo - which may sit on a read-only checkout, and is not
+    where npm state belongs - and reused between runs, so the install happens
+    once per machine rather than once per scan.
     """
-    env = _first_existing(
-        [os.environ.get("CHROMEDRIVER_PATH"), os.environ.get("CHROMEDRIVER_TEST_PATH"),
-         os.environ.get("CHROMEWEBDRIVER")],
-        names=("chromedriver.exe", "chromedriver"))
-    if env:
-        return env
-    exe = shutil.which("chromedriver") or shutil.which("chromedriver.exe")
-    if exe:
-        return exe
-    if os.name == "nt":
-        return _first_existing(WINDOWS_CHROMEDRIVER_PATHS)
-    return None
-
-
-def find_chrome():
-    """Absolute path to a Chrome/Chromium binary, or None."""
-    env = _first_existing([os.environ.get("CHROME_PATH"), os.environ.get("CHROME_TEST_PATH")])
-    if env:
-        return env
-    for name in POSIX_CHROME_NAMES:
-        exe = shutil.which(name) or shutil.which(name + ".exe")
-        if exe:
-            return exe
-    if os.name == "nt":
-        return _first_existing(WINDOWS_CHROME_PATHS)
-    return None
-
-
-VERSION_RE = re.compile(r"(\d+)\.\d+\.\d+")
-
-
-def _binary_version(path, timeout=20):
-    """`<binary> --version` as a plain string, or "" if it cannot be asked."""
-    if not path:
-        return ""
+    override = os.environ.get("A11Y_RUNNER_HOME")
+    if override:
+        return Path(override)
+    base = (os.environ.get("LOCALAPPDATA") if os.name == "nt"
+            else os.environ.get("XDG_CACHE_HOME")) or str(Path.home() / ".cache")
     try:
-        proc = subprocess.run([path, "--version"], check=False, timeout=timeout,
+        home = Path(base) / "accessibility-scan-runner"
+        home.mkdir(parents=True, exist_ok=True)
+        return home
+    except Exception:
+        return Path(tempfile.gettempdir()) / "accessibility-scan-runner"
+
+
+def node_modules(home):
+    return Path(home) / "node_modules"
+
+
+def deps_installed(home):
+    """True when both npm packages are already unpacked in `home`."""
+    root = node_modules(home)
+    return all((root / name.replace("/", os.sep)).is_dir() for name in RUNNER_DEPS)
+
+
+def runner_for(home=None):
+    """A Runner pointing at `home` - paths and env only, nothing installed."""
+    home = Path(home) if home is not None else runner_home()
+    return Runner(script=str(RUNNER_JS), env=scan_env(node_modules(home)), home=home)
+
+
+def _run_tool(cmd, cwd, env, timeout=INSTALL_TIMEOUT):
+    """Run a setup command. Returns (returncode, cleaned combined output);
+    a command that cannot start is a non-zero code, never an exception."""
+    try:
+        proc = subprocess.run(cmd, cwd=str(cwd), check=False, timeout=timeout, env=env,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               encoding="utf-8", errors="replace")
+    except subprocess.TimeoutExpired as e:
+        return 1, clean_output(getattr(e, "output", "")) or f"timed out after {timeout}s"
+    except FileNotFoundError:
+        return 1, f"{cmd[0]} not found on PATH"
+    except Exception as e:
+        return 1, f"{type(e).__name__}: {e}"
+    return getattr(proc, "returncode", 0), clean_output(getattr(proc, "stdout", ""))
+
+
+def install_deps(home, env, log=print):
+    """npm install @axe-core/playwright + playwright into `home`.
+
+    Returns True on success. A failure is logged and never raised: the scan
+    still runs, every page then fails with the runner's real error, and a run
+    that analyzed nothing reports "Not determined" rather than a false green.
+    """
+    home = Path(home)
+    home.mkdir(parents=True, exist_ok=True)
+    (home / "package.json").write_text(json.dumps({
+        "name": "accessibility-scan-runner",
+        "version": "1.0.0",
+        "private": True,
+        "description": "npm dependencies for accessibility_scan.py's axe runner",
+        "dependencies": dict(RUNNER_DEPS),
+    }, indent=2) + "\n", encoding="utf-8")
+
+    wanted = ", ".join(f"{name}@{spec}" for name, spec in RUNNER_DEPS.items())
+    log(f"Accessibility: installing the runner's npm packages (first run only): {wanted}")
+    rc, output = _run_tool([NPM, "install", "--no-audit", "--no-fund", "--loglevel=error"],
+                           cwd=home, env=env)
+    if rc == 0 and deps_installed(home):
+        log(f"Accessibility: runner packages installed in {home}")
+        return True
+    log(f"Accessibility: WARNING - installing the runner's npm packages failed "
+        f"(npm exited {rc}). Every page will fail until `npm install` can reach the "
+        f"registry; install them by hand in {home} if this machine is offline.")
+    for line in (output or "").splitlines():
+        log(f"    npm: {line}")
+    return False
+
+
+# Asks Playwright to actually start its browser and print where it lives. A
+# launch, not a file check: a headless run uses Playwright's headless shell
+# rather than the full Chromium binary, so "the file exists" is the wrong
+# question - "does it come up" is the one that decides whether pages can be
+# audited, and it catches a missing shared library too.
+BROWSER_PROBE = (
+    "const {chromium} = require('playwright');"
+    "chromium.launch({headless: true, args: ['--no-sandbox', '--disable-gpu']})"
+    "  .then(async (b) => { const p = chromium.executablePath();"
+    "                       await b.close();"
+    "                       process.stdout.write(p || 'ready'); })"
+    "  .catch((e) => { process.stderr.write(String(e)); process.exit(1); });"
+)
+
+
+def chromium_path(home, env):
+    """Path to a Chromium that really starts, or "" when Playwright cannot get
+    one up yet (not downloaded, or Playwright itself cannot be loaded)."""
+    try:
+        proc = subprocess.run([NODE, "-e", BROWSER_PROBE], cwd=str(home), check=False,
+                              timeout=120, env=env, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, encoding="utf-8", errors="replace")
     except Exception:
         return ""
-    lines = clean_output(getattr(proc, "stdout", None)).splitlines()
-    return lines[0].strip() if lines else ""
+    if getattr(proc, "returncode", 1) != 0:
+        return ""
+    return (getattr(proc, "stdout", "") or "").strip()
 
 
-def check_runner(log=print):
-    """Report what the axe runner will use, before the first page is scanned.
+def install_chromium(home, env, log=print):
+    """Fetch Playwright's own Chromium build. Returns its path, or ""."""
+    log("Accessibility: Playwright's Chromium is not present yet - fetching it "
+        "(first run only): npx playwright install chromium")
+    rc, output = _run_tool([NPX, "--yes", "playwright", "install", "chromium"],
+                           cwd=home, env=env)
+    path = chromium_path(home, env)
+    if path:
+        log(f"Accessibility: Chromium installed ({path})")
+        return path
+    log(f"Accessibility: WARNING - could not install Playwright's Chromium "
+        f"(exited {rc}). Every page will fail until it is downloadable; run "
+        f"`npx playwright install chromium` in {home} once the network allows it.")
+    for line in (output or "").splitlines():
+        log(f"    playwright: {line}")
+    return ""
 
-    Everything here is a warning, never a hard stop - a run should still be
-    attempted and report its real error. Returns the (driver, chrome) paths so
-    run_axe can pass them to axe.
+
+def ensure_runner(log=print):
+    """Get the Node runner ready before the first page is scanned.
+
+    Installs the npm packages and Playwright's Chromium if they are missing,
+    logging each step. Everything here is a warning, never a hard stop - a run
+    should still be attempted and report its real error. Returns the Runner
+    scan_site hands to every page.
     """
-    log(f"Accessibility: runner {' '.join(AXE)}")
-    node = shutil.which("node") or shutil.which("node.exe")
+    home = runner_home()
+    runner = runner_for(home)
+    log(f"Accessibility: runner {NODE} {RUNNER_JS.name} "
+        f"(@axe-core/playwright {AXE_CORE_VERSION} on Playwright's bundled Chromium)")
+
+    node = shutil.which(NODE) or shutil.which("node")
     if node:
         log(f"Accessibility: node {node}")
     else:
-        log("Accessibility: WARNING - node not found on PATH; axe cannot run without "
-            "Node.js. Install Node 18+ and re-run.")
+        log(f"Accessibility: WARNING - {NODE} not found on PATH; the runner cannot start "
+            f"without Node.js. Install Node 18+ and re-run.")
+    if not RUNNER_JS.is_file():
+        log(f"Accessibility: WARNING - runner script missing at {RUNNER_JS}")
 
-    driver = find_chromedriver()
-    chrome = find_chrome()
-    driver_version = _binary_version(driver)
-    chrome_version = _binary_version(chrome)
-
-    if driver:
-        log(f"Accessibility: chromedriver {driver}"
-            + (f" ({driver_version})" if driver_version else ""))
+    if deps_installed(home):
+        log(f"Accessibility: runner packages ready in {home}")
     else:
-        log("Accessibility: WARNING - chromedriver not found on PATH. axe will fall back "
-            "to whatever driver ships with @axe-core/cli, which is absent when its "
-            "download was blocked. Install one that matches your Chrome "
-            "(npx browser-driver-manager install chrome) or set CHROMEDRIVER_PATH.")
-    if chrome:
-        log(f"Accessibility: chrome {chrome}"
-            + (f" ({chrome_version})" if chrome_version else ""))
-    else:
-        log("Accessibility: WARNING - no Chrome/Chromium found in the usual locations; "
-            "set CHROME_PATH if it is installed somewhere else.")
+        install_deps(home, runner.env, log=log)
 
-    dm = VERSION_RE.search(driver_version)
-    cm = VERSION_RE.search(chrome_version)
-    if dm and cm and dm.group(1) != cm.group(1):
-        log(f"Accessibility: WARNING - ChromeDriver {dm.group(1)}.x does not match Chrome "
-            f"{cm.group(1)}.x. Every page will fail with SessionNotCreatedError until they "
-            f"match (npx browser-driver-manager install chrome).")
-    return driver, chrome
+    path = chromium_path(home, runner.env)
+    if path:
+        log(f"Accessibility: chromium {path}")
+    else:
+        install_chromium(home, runner.env, log=log)
+    return runner
 
 
 # --------------------------------------------------------------------------
@@ -528,8 +576,8 @@ def is_axe_result(data):
 
 
 def normalize_axe(data, url=""):
-    """@axe-core/cli saves an ARRAY of per-URL result objects; a raw axe.run()
-    result is a single object. Accept either shape.
+    """The Playwright runner prints one result object per page; a saved
+    @axe-core/cli file was an ARRAY of them. Accept either shape.
 
     `passes` is kept as a count: it is the evidence that rules actually ran on
     the page, which is what separates "clean" from "never audited"."""
@@ -552,71 +600,93 @@ def normalize_axe(data, url=""):
     }
 
 
-def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT,
-            chromedriver=None, chrome=None):
-    """Run axe-core against one URL.
+def _streams(*parts):
+    """Join whatever the runner wrote on either stream, skipping empties."""
+    return "\n".join(p for p in (str(x or "").strip() for x in parts) if p)
+
+
+def parse_runner_output(stdout):
+    """Pull the runner's JSON payload out of its stdout.
+
+    Returns (payload|None, leftover_text). The runner tags its payload line, so
+    anything a dependency happens to print alongside it stays diagnostics
+    instead of corrupting the parse; a bare JSON document is accepted too.
+    """
+    text = (stdout or "").strip()
+    if not text:
+        return None, ""
+    payload, other = None, []
+    for line in text.splitlines():
+        candidate = line.strip()
+        if candidate.startswith(RESULT_MARKER):
+            candidate = candidate[len(RESULT_MARKER):].strip()
+        elif not candidate.startswith(("{", "[")):
+            other.append(line)
+            continue
+        try:
+            payload = json.loads(candidate)
+        except ValueError:
+            other.append(line)
+    if payload is None:
+        try:                       # a payload pretty-printed across lines
+            return json.loads(text), ""
+        except ValueError:
+            return None, "\n".join(other) or text
+    return payload, "\n".join(other)
+
+
+def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT, runner=None):
+    """Run axe-core against one URL through the Playwright runner.
 
     Returns (normalized_result|None, seconds, why, output). `output` is the
-    runner's own stdout/stderr - never discarded, so a page that fails can say
+    runner's own diagnostics - never discarded, so a page that fails can say
     why instead of vanishing into a silent "0 pages analyzed".
     """
     tags = list(tags or RUN_TAGS)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"axe_{index:03d}.json"
-    out_file = out_dir / name
-    cmd = AXE + [url,
-                 "--tags", ",".join(tags),
-                 "--dir", str(out_dir),
-                 "--save", name,
-                 "--timeout", str(timeout),
-                 # the CLI already runs headless chrome; these only relax the sandbox
-                 # and cert handling so odd hosts still audit (cf. scan_env()).
-                 "--chrome-options", "no-sandbox,disable-gpu,ignore-certificate-errors"]
-    # Pin the driver and the browser when we found them, rather than letting the
-    # CLI guess - the guess is what breaks on Windows and behind proxies.
-    driver = chromedriver if chromedriver is not None else find_chromedriver()
-    if driver:
-        cmd += ["--chromedriver-path", driver]
-    browser = chrome if chrome is not None else find_chrome()
-    if browser:
-        cmd += ["--chrome-path", browser]
+    out_file = out_dir / f"axe_{index:03d}.json"
+    runner = runner or runner_for()
+    cmd = [NODE, runner.script,
+           "--url", url,
+           "--tags", ",".join(tags),
+           "--timeout", str(timeout)]
 
     t0 = time.time()
     try:
         proc = subprocess.run(cmd, cwd=str(out_dir), check=False, timeout=timeout + 30,
-                              env=scan_env(), stdout=subprocess.PIPE,
-                              stderr=subprocess.STDOUT, encoding="utf-8", errors="replace")
+                              env=runner.env, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, encoding="utf-8", errors="replace")
     except subprocess.TimeoutExpired as e:
-        return None, int(time.time() - t0), "timeout", clean_output(getattr(e, "output", ""))
+        return (None, int(time.time() - t0), "timeout",
+                clean_output(_streams(getattr(e, "output", ""), getattr(e, "stderr", ""))))
     except FileNotFoundError:
         return (None, int(time.time() - t0),
-                f"runner not found: {AXE[0]} (Node.js 18+ must be installed and on PATH)", "")
+                f"runner not found: {NODE} (Node.js 18+ must be installed and on PATH)", "")
     except Exception as e:
         return None, int(time.time() - t0), f"{type(e).__name__}: {e}", ""
 
     secs = int(time.time() - t0)
-    output = clean_output(getattr(proc, "stdout", None))
     rc = getattr(proc, "returncode", 0)
+    # The payload on stdout - not the exit code - is what says the page was
+    # really audited; stderr (plus anything else on stdout) is the diagnostics.
+    data, leftover = parse_runner_output(getattr(proc, "stdout", ""))
+    output = clean_output(_streams(leftover, getattr(proc, "stderr", "")))
 
-    # Without --exit axe returns 0 even when rules fail, so the saved result file
-    # - not the return code - is what says the page was really audited. A missing
-    # file plus a non-zero code is a runner failure, and the code is part of the
-    # story when the runner died before printing anything (npm does exactly that).
-    if not (out_file.exists() and out_file.stat().st_size > 0):
-        why = "no result file"
+    if data is None:
+        why = "no result from the runner"
         if rc:
-            why += f"; axe exited {rc}"
+            why += f"; runner exited {rc}"
         if not output:
-            why += ("; the runner produced no output - usually npm failing to install "
-                    "@axe-core/cli or its driver")
+            why += ("; the runner produced no output - usually Node.js missing, or its "
+                    "npm packages never installed")
         return None, secs, why, output
-    try:
-        data = json.loads(out_file.read_text(encoding="utf-8"))
-    except Exception as e:
-        return None, secs, f"unreadable result ({e})", output
     if not is_axe_result(data):
-        return None, secs, "result file is not an axe result", output
+        return None, secs, "runner output is not an axe result", output
+    try:                            # keep the raw result next to the run, as before
+        out_file.write_text(json.dumps(data), encoding="utf-8")
+    except Exception:
+        pass
     return normalize_axe(data, url), secs, "", output
 
 
@@ -740,14 +810,13 @@ def scan_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=
     pages_attempted = len(urls)
     log(f"Accessibility: axe-core {AXE_CORE_VERSION} on {pages_attempted} page(s), "
         f"{concurrency} in parallel...")
-    driver, chrome = check_runner(log)
+    runner = ensure_runner(log)
 
     results, failures = [], []
     seen_output = set()
     from concurrent.futures import ThreadPoolExecutor, as_completed
     with ThreadPoolExecutor(max_workers=max(1, int(concurrency or 1))) as pool:
-        futures = {pool.submit(run_axe, u, work_dir, tags, i,
-                               chromedriver=driver, chrome=chrome): u
+        futures = {pool.submit(run_axe, u, work_dir, tags, i, runner=runner): u
                    for i, u in enumerate(urls, 1)}
         for n, fut in enumerate(as_completed(futures), 1):
             u = futures[fut]
@@ -760,7 +829,7 @@ def scan_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=
             failures.append({"url": u, "why": why, "output": output})
             log(f"[{n}/{pages_attempted}] a11y FAILED ({why}) {u}")
             # The runner's own words, once per distinct error - the same broken
-            # driver on 30 pages should not bury the log 30 times over.
+            # runner on 30 pages should not bury the log 30 times over.
             if output and output not in seen_output:
                 seen_output.add(output)
                 for line in output.splitlines():
@@ -872,7 +941,7 @@ def _std_rules_html(row):
 
 def _failures_html(failures):
     """Why the pages that could not be analyzed failed, in the runner's own
-    words - grouped so one broken driver reads as one problem."""
+    words - grouped so one broken runner reads as one problem."""
     if not failures:
         return ""
     groups = {}

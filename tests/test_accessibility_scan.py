@@ -1,34 +1,46 @@
-"""Standards mapping + report rendering, with the axe subprocess stubbed out."""
+"""Standards mapping + report rendering, with the Node runner stubbed out."""
 
+import json
+import os
 import re
+from pathlib import Path
 
 import pytest
 
 import accessibility_scan as a11y
-from conftest import FakeAxe, axe_payload, violation
+from conftest import FakeRunner, axe_payload, violation
 
 
 # --------------------------------------------------------------------------
 # subprocess invocation
 # --------------------------------------------------------------------------
 
-def test_axe_version_is_pinned_in_the_command(fake_axe, tmp_path):
+def test_a_page_is_audited_by_node_running_the_playwright_runner(fake_runner, tmp_path):
     a11y.run_axe("https://example.com/", tmp_path, index=1)
-    cmd = " ".join(fake_axe.calls[0]["cmd"])
-    if a11y.AXE[0].endswith("npx") or a11y.AXE[0].endswith("npx.cmd"):
-        assert a11y.AXE_CLI_PACKAGE in cmd
-        assert a11y.AXE_CLI_PACKAGE.endswith(a11y.AXE_CORE_VERSION)
+    cmd = fake_runner.calls[0]["cmd"]
+    assert cmd[0] == a11y.NODE
+    assert Path(cmd[1]).name == "axe_playwright_runner.js"
+    assert cmd[cmd.index("--url") + 1] == "https://example.com/"
+    assert cmd[cmd.index("--timeout") + 1] == str(a11y.PER_PAGE_TIMEOUT)
 
 
-def test_run_axe_requests_every_required_tag(fake_axe, tmp_path):
+def test_the_runner_packages_are_pinned():
+    """axe-core's version is what the report prints, so @axe-core/playwright is
+    pinned to it; playwright itself is a range because its browser and its
+    client ship together and cannot drift apart."""
+    assert a11y.RUNNER_DEPS["@axe-core/playwright"] == a11y.AXE_CORE_VERSION
+    assert a11y.RUNNER_DEPS["playwright"].startswith("^1.")
+
+
+def test_run_axe_requests_every_required_tag(fake_runner, tmp_path):
     a11y.run_axe("https://example.com/", tmp_path, index=1)
-    tags = fake_axe.tags
+    tags = fake_runner.tags
     for required in ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa",
                      "best-practice", "section508", "EN-301-549"]:
         assert required in tags
 
 
-def test_run_axe_parses_the_saved_result(fake_axe, tmp_path):
+def test_run_axe_parses_the_result_the_runner_printed(fake_runner, tmp_path):
     result, secs, why, _out = a11y.run_axe("https://example.com/", tmp_path, index=3)
     assert why == ""
     assert result["url"] == "https://example.com/"
@@ -39,24 +51,26 @@ def test_run_axe_parses_the_saved_result(fake_axe, tmp_path):
     assert (tmp_path / "axe_003.json").exists()
 
 
-def test_run_axe_ignores_the_exit_code_and_trusts_the_result_file(monkeypatch, tmp_path):
-    """axe only exits non-zero with --exit, which we do not pass."""
-    stub = FakeAxe()
+def test_run_axe_trusts_the_payload_over_the_exit_code(monkeypatch, tmp_path):
+    """The result on stdout is the evidence a page was audited; a runner that
+    also grumbles on the way out has still audited it."""
+    stub = FakeRunner()
 
-    def exits_clean(cmd, **kwargs):
-        stub(cmd, **kwargs)
-        return a11y.subprocess.CompletedProcess(cmd, 0)
+    def noisy_exit(cmd, **kwargs):
+        proc = stub(cmd, **kwargs)
+        return a11y.subprocess.CompletedProcess(cmd, 1, stdout=proc.stdout,
+                                                stderr="a warning on the way out")
 
-    monkeypatch.setattr(a11y.subprocess, "run", exits_clean)
+    monkeypatch.setattr(a11y.subprocess, "run", noisy_exit)
     result, _secs, why, _out = a11y.run_axe("https://example.com/", tmp_path, index=1)
     assert why == "" and result["violations"]
 
 
-def test_run_axe_reports_a_missing_result_file(monkeypatch, tmp_path):
-    stub = FakeAxe(write_file=False)
+def test_run_axe_reports_a_page_that_printed_no_result(monkeypatch, tmp_path):
+    stub = FakeRunner(emit_result=False)
     monkeypatch.setattr(a11y.subprocess, "run", stub)
     result, _secs, why, _out = a11y.run_axe("https://example.com/", tmp_path, index=1)
-    assert result is None and why.startswith("no result file")
+    assert result is None and why.startswith("no result from the runner")
 
 
 def test_run_axe_survives_a_timeout(monkeypatch, tmp_path):
@@ -67,23 +81,30 @@ def test_run_axe_survives_a_timeout(monkeypatch, tmp_path):
     assert result is None and why == "timeout"
 
 
-def test_run_axe_saves_into_the_work_dir_and_relaxes_chrome(fake_axe, tmp_path):
+def test_run_axe_keeps_the_raw_result_in_the_work_dir(fake_runner, tmp_path):
     a11y.run_axe("https://example.com/", tmp_path, index=2)
-    cmd = fake_axe.calls[0]["cmd"]
-    assert cmd[cmd.index("--dir") + 1] == str(tmp_path)
-    assert cmd[cmd.index("--save") + 1] == "axe_002.json"
-    opts = cmd[cmd.index("--chrome-options") + 1]
-    assert "no-sandbox" in opts and "ignore-certificate-errors" in opts
+    saved = json.loads((tmp_path / "axe_002.json").read_text(encoding="utf-8"))
+    assert {v["id"] for v in saved["violations"]} >= {"image-alt", "color-contrast"}
 
 
-def test_run_axe_relaxes_node_tls_like_the_other_scans(fake_axe, tmp_path):
+def test_the_runner_script_is_headless_and_relaxes_certs_and_the_sandbox():
+    """Everything the ChromeDriver command line used to carry now lives in the
+    runner script, since Playwright launches the browser itself."""
+    js = a11y.RUNNER_JS.read_text(encoding="utf-8")
+    assert "headless: true" in js
+    assert "ignoreHTTPSErrors: true" in js
+    assert "--no-sandbox" in js and "--ignore-certificate-errors" in js
+
+
+def test_run_axe_relaxes_node_tls_and_points_node_at_the_runner_packages(fake_runner, tmp_path):
     a11y.run_axe("https://example.com/", tmp_path, index=1)
-    env = fake_axe.calls[0]["kwargs"]["env"]
+    env = fake_runner.calls[0]["kwargs"]["env"]
     assert env["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
+    assert env["NODE_PATH"].split(os.pathsep)[0].endswith("node_modules")
 
 
 def test_normalize_axe_accepts_a_bare_result_object():
-    payload = axe_payload("https://example.com/")[0]
+    payload = axe_payload("https://example.com/")
     norm = a11y.normalize_axe(payload)
     assert norm["url"] == "https://example.com/"
     assert len(norm["violations"]) == 5
@@ -135,7 +156,7 @@ def _aggregate_of(*results):
 
 
 def test_aggregate_dedupes_rules_across_pages_and_counts_elements():
-    pages = [a11y.normalize_axe(axe_payload(u)[0])
+    pages = [a11y.normalize_axe(axe_payload(u))
              for u in ("https://x.test/", "https://x.test/about/")]
     violations, incomplete, engine = _aggregate_of(*pages)
     assert engine == "4.10.2"
@@ -150,7 +171,7 @@ def test_aggregate_dedupes_rules_across_pages_and_counts_elements():
 
 
 def test_aggregate_sorts_most_severe_first():
-    pages = [a11y.normalize_axe(axe_payload("https://x.test/")[0])]
+    pages = [a11y.normalize_axe(axe_payload("https://x.test/"))]
     violations, _, _ = a11y.aggregate(pages)
     impacts = [v["impact"] for v in violations]
     assert impacts == sorted(impacts, key=lambda i: a11y.IMPACT_ORDER.index(i))
@@ -159,16 +180,16 @@ def test_aggregate_sorts_most_severe_first():
 
 def test_aggregate_keeps_the_most_severe_impact_seen_for_a_rule():
     a = a11y.normalize_axe(axe_payload(
-        "https://x.test/", violations=[violation("dup", "minor", ["wcag2a"])], incomplete=[])[0])
+        "https://x.test/", violations=[violation("dup", "minor", ["wcag2a"])], incomplete=[]))
     b = a11y.normalize_axe(axe_payload(
-        "https://x.test/b", violations=[violation("dup", "critical", ["wcag2a"])], incomplete=[])[0])
+        "https://x.test/b", violations=[violation("dup", "critical", ["wcag2a"])], incomplete=[]))
     violations, _, _ = a11y.aggregate([a, b])
     assert violations[0]["impact"] == "critical"
 
 
 def test_unknown_impact_is_bucketed_as_minor():
     page = a11y.normalize_axe(axe_payload(
-        "https://x.test/", violations=[violation("odd", None, ["wcag2a"])], incomplete=[])[0])
+        "https://x.test/", violations=[violation("odd", None, ["wcag2a"])], incomplete=[]))
     violations, _, _ = a11y.aggregate([page])
     assert violations[0]["impact"] == "minor"
 
@@ -211,7 +232,7 @@ def test_atag_is_marked_not_applicable():
 
 
 def test_atag_stays_not_applicable_even_with_violations():
-    violations, _, _ = a11y.aggregate([a11y.normalize_axe(axe_payload("https://x.test/")[0])])
+    violations, _, _ = a11y.aggregate([a11y.normalize_axe(axe_payload("https://x.test/"))])
     row = a11y.evaluate_standards(violations, ["atag20"])[0]
     assert row["verdict"] == "n/a" and row["rules"] == 0
 
@@ -225,7 +246,7 @@ ALL_IDS = [s["id"] for s in a11y.STANDARDS]
 
 def test_a_wcag21aa_only_violation_splits_the_2_0_and_2_1_standards():
     page = a11y.normalize_axe(axe_payload("https://x.test/", incomplete=[], violations=[
-        violation("reflow", "serious", ["wcag21aa", "wcag1410"])])[0])
+        violation("reflow", "serious", ["wcag21aa", "wcag1410"])]))
     violations, _, _ = a11y.aggregate([page])
     v = _verdicts(violations, ALL_IDS)
     # 2.1 AA (and everything scoped to it) fails
@@ -240,7 +261,7 @@ def test_a_wcag21aa_only_violation_splits_the_2_0_and_2_1_standards():
 
 def test_a_section508_only_violation_fails_only_section508():
     page = a11y.normalize_axe(axe_payload("https://x.test/", incomplete=[], violations=[
-        violation("legacy-508", "serious", ["section508", "section508.22.a"])])[0])
+        violation("legacy-508", "serious", ["section508", "section508.22.a"])]))
     violations, _, _ = a11y.aggregate([page])
     v = _verdicts(violations, ALL_IDS)
     assert v["section508"] == "fail"
@@ -249,7 +270,7 @@ def test_a_section508_only_violation_fails_only_section508():
 
 def test_a_best_practice_only_violation_fails_no_legal_standard():
     page = a11y.normalize_axe(axe_payload("https://x.test/", incomplete=[], violations=[
-        violation("region", "moderate", ["best-practice", "cat.keyboard"])])[0])
+        violation("region", "moderate", ["best-practice", "cat.keyboard"])]))
     violations, _, _ = a11y.aggregate([page])
     v = _verdicts(violations, ALL_IDS)
     assert all(verdict in ("pass", "n/a") for verdict in v.values())
@@ -257,7 +278,7 @@ def test_a_best_practice_only_violation_fails_no_legal_standard():
 
 def test_a_wcag2a_violation_fails_every_page_level_standard():
     page = a11y.normalize_axe(axe_payload("https://x.test/", incomplete=[], violations=[
-        violation("image-alt", "critical", ["wcag2a", "wcag111"])])[0])
+        violation("image-alt", "critical", ["wcag2a", "wcag111"])]))
     violations, _, _ = a11y.aggregate([page])
     v = _verdicts(violations, ALL_IDS)
     assert v["atag20"] == "n/a"
@@ -266,7 +287,7 @@ def test_a_wcag2a_violation_fails_every_page_level_standard():
 
 def test_a_wcag22aa_violation_only_fails_the_2_2_standards():
     page = a11y.normalize_axe(axe_payload("https://x.test/", incomplete=[], violations=[
-        violation("target-size", "serious", ["wcag22aa", "wcag258"])])[0])
+        violation("target-size", "serious", ["wcag22aa", "wcag258"])]))
     violations, _, _ = a11y.aggregate([page])
     v = _verdicts(violations, ALL_IDS)
     assert v["wcag22aa"] == "fail" and v["wcag22aaa"] == "fail"
@@ -274,7 +295,7 @@ def test_a_wcag22aa_violation_only_fails_the_2_2_standards():
 
 
 def test_verdict_carries_rule_element_and_page_counts():
-    pages = [a11y.normalize_axe(axe_payload(u)[0])
+    pages = [a11y.normalize_axe(axe_payload(u))
              for u in ("https://x.test/", "https://x.test/about/")]
     violations, _, _ = a11y.aggregate(pages)
     row = {r["id"]: r for r in a11y.evaluate_standards(violations, ["wcag21aa"])}["wcag21aa"]
@@ -287,7 +308,7 @@ def test_verdict_carries_rule_element_and_page_counts():
 
 def test_incomplete_items_never_drive_a_verdict():
     page = a11y.normalize_axe(axe_payload("https://x.test/", violations=[], incomplete=[
-        violation("color-contrast", "serious", ["wcag2aa", "wcag143"])])[0])
+        violation("color-contrast", "serious", ["wcag2aa", "wcag143"])]))
     violations, incomplete, _ = a11y.aggregate([page])
     assert incomplete and not violations
     assert all(r["verdict"] in ("pass", "n/a")
@@ -321,7 +342,7 @@ def test_run_tags_adds_tags_a_selected_standard_needs():
 # --------------------------------------------------------------------------
 
 @pytest.fixture
-def report(fake_axe):
+def report(fake_runner):
     return a11y.scan_site("https://x.test",
                           ["https://x.test/", "https://x.test/about/"],
                           standards=["wcag21aa", "section508", "en301549", "aoda", "atag20"],
@@ -356,7 +377,7 @@ def test_report_shows_the_standard_scope_and_a_failing_verdict(report):
 
 def test_report_shows_pass_and_fail_side_by_side(monkeypatch):
     """A 2.1-AA-only violation: 2.1 AA standards fail, 2.0 AA standards pass."""
-    stub = FakeAxe(payload_for=lambda url: axe_payload(url, incomplete=[], violations=[
+    stub = FakeRunner(payload_for=lambda url: axe_payload(url, incomplete=[], violations=[
         violation("reflow", "serious", ["wcag21aa", "wcag1410"])]))
     monkeypatch.setattr(a11y.subprocess, "run", stub)
     out = a11y.scan_site("https://x.test", ["https://x.test/"],
@@ -380,8 +401,8 @@ def test_report_surfaces_incomplete_items_for_manual_review(report):
     assert "a person has to confirm them" in report
 
 
-def test_report_escapes_element_html(fake_axe, monkeypatch):
-    stub = FakeAxe(payload_for=lambda url: axe_payload(url, incomplete=[], violations=[
+def test_report_escapes_element_html(fake_runner, monkeypatch):
+    stub = FakeRunner(payload_for=lambda url: axe_payload(url, incomplete=[], violations=[
         violation("image-alt", "critical", ["wcag2a", "wcag111"],
                   node_html='<img src=x onerror="alert(1)"><script>bad()</script>')]))
     monkeypatch.setattr(a11y.subprocess, "run", stub)
@@ -391,7 +412,7 @@ def test_report_escapes_element_html(fake_axe, monkeypatch):
 
 
 def test_report_is_clean_when_nothing_fires(monkeypatch):
-    stub = FakeAxe(payload_for=lambda url: axe_payload(url, violations=[], incomplete=[]))
+    stub = FakeRunner(payload_for=lambda url: axe_payload(url, violations=[], incomplete=[]))
     monkeypatch.setattr(a11y.subprocess, "run", stub)
     out = a11y.scan_site("https://x.test", ["https://x.test/"],
                          standards=["wcag21aa"], log=lambda *_: None)
@@ -404,13 +425,13 @@ def test_report_is_clean_when_nothing_fires(monkeypatch):
 # crawl plumbing: max pages + parallel are honoured by the caller's URL list
 # --------------------------------------------------------------------------
 
-def test_scan_site_audits_every_url_it_is_given(fake_axe):
+def test_scan_site_audits_every_url_it_is_given(fake_runner):
     urls = [f"https://x.test/p{i}" for i in range(7)]
     a11y.scan_site("https://x.test", urls, concurrency=3, log=lambda *_: None)
-    assert sorted(fake_axe.urls) == sorted(urls)
+    assert sorted(fake_runner.urls) == sorted(urls)
 
 
-def test_scan_site_writes_axe_json_into_the_work_dir(fake_axe, tmp_path):
+def test_scan_site_writes_axe_json_into_the_work_dir(fake_runner, tmp_path):
     work = tmp_path / "axe"
     a11y.scan_site("https://x.test", ["https://x.test/", "https://x.test/b"],
                    work_dir=work, log=lambda *_: None)
@@ -418,16 +439,16 @@ def test_scan_site_writes_axe_json_into_the_work_dir(fake_axe, tmp_path):
 
 
 def test_scan_site_keeps_going_when_one_page_fails(monkeypatch):
-    stub = FakeAxe(fail_urls={"https://x.test/broken"})
+    stub = FakeRunner(fail_urls={"https://x.test/broken"})
     monkeypatch.setattr(a11y.subprocess, "run", stub)
     logged = []
     out = a11y.scan_site("https://x.test",
                          ["https://x.test/", "https://x.test/broken"],
                          log=logged.append)
     assert "1 of 2 page(s) analyzed" in out
-    assert any("a11y FAILED (no result file" in line for line in logged)
+    assert any("a11y FAILED (no result from the runner" in line for line in logged)
 
 
-def test_scan_site_falls_back_to_the_site_url_when_given_no_pages(fake_axe):
+def test_scan_site_falls_back_to_the_site_url_when_given_no_pages(fake_runner):
     a11y.scan_site("https://x.test/", [], log=lambda *_: None)
-    assert fake_axe.urls == ["https://x.test/"]
+    assert fake_runner.urls == ["https://x.test/"]
