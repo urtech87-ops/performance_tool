@@ -29,7 +29,7 @@ def test_run_axe_requests_every_required_tag(fake_axe, tmp_path):
 
 
 def test_run_axe_parses_the_saved_result(fake_axe, tmp_path):
-    result, secs, why = a11y.run_axe("https://example.com/", tmp_path, index=3)
+    result, secs, why, _out = a11y.run_axe("https://example.com/", tmp_path, index=3)
     assert why == ""
     assert result["url"] == "https://example.com/"
     assert result["engine"] == "4.10.2"
@@ -48,22 +48,22 @@ def test_run_axe_ignores_the_exit_code_and_trusts_the_result_file(monkeypatch, t
         return a11y.subprocess.CompletedProcess(cmd, 0)
 
     monkeypatch.setattr(a11y.subprocess, "run", exits_clean)
-    result, _secs, why = a11y.run_axe("https://example.com/", tmp_path, index=1)
+    result, _secs, why, _out = a11y.run_axe("https://example.com/", tmp_path, index=1)
     assert why == "" and result["violations"]
 
 
 def test_run_axe_reports_a_missing_result_file(monkeypatch, tmp_path):
     stub = FakeAxe(write_file=False)
     monkeypatch.setattr(a11y.subprocess, "run", stub)
-    result, _secs, why = a11y.run_axe("https://example.com/", tmp_path, index=1)
-    assert result is None and why == "no result file"
+    result, _secs, why, _out = a11y.run_axe("https://example.com/", tmp_path, index=1)
+    assert result is None and why.startswith("no result file")
 
 
 def test_run_axe_survives_a_timeout(monkeypatch, tmp_path):
     def boom(cmd, **kw):
         raise a11y.subprocess.TimeoutExpired(cmd, 1)
     monkeypatch.setattr(a11y.subprocess, "run", boom)
-    result, _secs, why = a11y.run_axe("https://example.com/", tmp_path, index=1)
+    result, _secs, why, _out = a11y.run_axe("https://example.com/", tmp_path, index=1)
     assert result is None and why == "timeout"
 
 
@@ -88,12 +88,13 @@ def test_normalize_axe_accepts_a_bare_result_object():
     assert norm["url"] == "https://example.com/"
     assert len(norm["violations"]) == 5
     assert norm["engine"] == "4.10.2"
+    assert norm["passes"] == 3
 
 
 def test_normalize_axe_tolerates_junk():
     norm = a11y.normalize_axe(None, "https://example.com/")
     assert norm == {"url": "https://example.com/", "violations": [],
-                    "incomplete": [], "engine": ""}
+                    "incomplete": [], "passes": 0, "engine": ""}
 
 
 # --------------------------------------------------------------------------
@@ -349,7 +350,7 @@ def test_report_has_a_panel_row_per_selected_standard(report):
 
 
 def test_report_shows_the_standard_scope_and_a_failing_verdict(report):
-    assert "Violations found (automated)" in report   # WCAG 2.1 AA fails
+    assert "Not compliant (automated)" in report      # WCAG 2.1 AA fails
     assert "Scope: WCAG 2.0 Level AA (+ Section 508 specific rules)" in report
 
 
@@ -360,8 +361,8 @@ def test_report_shows_pass_and_fail_side_by_side(monkeypatch):
     monkeypatch.setattr(a11y.subprocess, "run", stub)
     out = a11y.scan_site("https://x.test", ["https://x.test/"],
                          standards=["wcag21aa", "aoda"], log=lambda *_: None)
-    assert "Violations found (automated)" in out   # WCAG 2.1 AA
-    assert "No violations (automated)" in out      # Ontario AODA (WCAG 2.0 AA)
+    assert "Not compliant (automated)" in out          # WCAG 2.1 AA
+    assert "Compliant (automated checks)" in out       # Ontario AODA (WCAG 2.0 AA)
 
 
 def test_report_groups_findings_by_impact_with_sc_fix_and_elements(report):
@@ -396,7 +397,7 @@ def test_report_is_clean_when_nothing_fires(monkeypatch):
                          standards=["wcag21aa"], log=lambda *_: None)
     assert "No violations detected by the automated checks" in out
     assert "Nothing flagged for manual review" in out
-    assert "No violations (automated)" in out
+    assert "Compliant (automated checks)" in out
 
 
 # --------------------------------------------------------------------------
@@ -424,7 +425,7 @@ def test_scan_site_keeps_going_when_one_page_fails(monkeypatch):
                          ["https://x.test/", "https://x.test/broken"],
                          log=logged.append)
     assert "1 of 2 page(s) analyzed" in out
-    assert any("skipped (no result file)" in line for line in logged)
+    assert any("a11y FAILED (no result file" in line for line in logged)
 
 
 def test_scan_site_falls_back_to_the_site_url_when_given_no_pages(fake_axe):

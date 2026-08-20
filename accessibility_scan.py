@@ -17,6 +17,15 @@ IMPORTANT - this reports AUTOMATED CHECKS ONLY. Automated tooling can detect
 roughly a third of WCAG failures; a clean run is not a statement of legal
 compliance, and nothing in the report should be presented as one.
 
+Just as important: a page that was never analyzed is not a page that passed.
+Failures are counted, the runner's own stdout/stderr is logged verbatim, and a
+run that analyzed zero pages reports every standard as "Not determined" rather
+than as clean.
+
+Requires Node.js plus a Chrome/Chromium and a matching ChromeDriver; the CLI is
+fetched with `npx --ignore-scripts` and pointed at the driver we locate, so a
+blocked driver download cannot take the whole scan down with it.
+
 Used by dashboard.py; also runnable directly:
     python accessibility_scan.py https://example.com -o accessibility.html
 """
@@ -26,6 +35,7 @@ import html
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import time
@@ -52,10 +62,18 @@ IMPACT_ORDER = ["critical", "serious", "moderate", "minor"]
 
 
 def _axe_cmd():
-    """Prefer a globally installed `axe`; fall back to the pinned npx package."""
-    import shutil
+    """Prefer a globally installed `axe`; fall back to the pinned npx package.
+
+    `--ignore-scripts` matters: @axe-core/cli depends on the `chromedriver` npm
+    package, whose install script downloads a driver binary from Google. Behind
+    a proxy, on a locked-down Windows box, or when the download 404s for the
+    current channel, that script exits 1 - npm then aborts the whole `npx`
+    invocation before axe ever starts, printing nothing at the default log
+    level. Skipping install scripts gets the CLI itself; we locate ChromeDriver
+    ourselves and hand axe the path (see find_chromedriver).
+    """
     exe = shutil.which("axe") or shutil.which("axe.cmd")
-    return [exe] if exe else [NPX, "--yes", AXE_CLI_PACKAGE]
+    return [exe] if exe else [NPX, "--yes", "--ignore-scripts", AXE_CLI_PACKAGE]
 
 
 AXE = _axe_cmd()
@@ -67,6 +85,172 @@ def scan_env():
     env = os.environ.copy()
     env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
     return env
+
+
+# --------------------------------------------------------------------------
+# runner output + browser/driver discovery
+# --------------------------------------------------------------------------
+
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+OUTPUT_MAX_LINES = 24     # keep a failure readable in the scan log
+OUTPUT_MAX_COLS = 400
+
+# Noise every Node process emits once NODE_TLS_REJECT_UNAUTHORIZED is set, plus
+# npm's own upgrade nag - dropping it keeps the real error visible.
+_NOISE = ("Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED",
+          "(Use `node --trace-warnings", "npm notice", "npm warn")
+
+# Where Chrome / ChromeDriver usually live when they are not on PATH. Windows
+# is the case that matters: chrome.exe is essentially never on PATH there.
+WINDOWS_CHROME_PATHS = (
+    r"%ProgramFiles%\Google\Chrome\Application\chrome.exe",
+    r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe",
+    r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe",
+    r"%ProgramFiles%\Chromium\Application\chrome.exe",
+    r"%LOCALAPPDATA%\Chromium\Application\chrome.exe",
+)
+WINDOWS_CHROMEDRIVER_PATHS = (
+    r"%LOCALAPPDATA%\ChromeDriver\chromedriver.exe",
+    r"%ProgramFiles%\Google\Chrome\Application\chromedriver.exe",
+    r"%ProgramFiles%\chromedriver\chromedriver.exe",
+    r"C:\chromedriver\chromedriver.exe",
+)
+POSIX_CHROME_NAMES = ("google-chrome", "google-chrome-stable", "chrome",
+                      "chromium", "chromium-browser")
+
+
+def clean_output(text):
+    """ANSI-stripped, de-noised runner output, capped so one broken page cannot
+    flood the scan log."""
+    if not text:
+        return ""
+    lines = []
+    for raw in str(text).splitlines():
+        line = ANSI_RE.sub("", raw).rstrip()
+        if not line.strip() or any(n in line for n in _NOISE):
+            continue
+        lines.append(line[:OUTPUT_MAX_COLS])
+    if len(lines) > OUTPUT_MAX_LINES:
+        dropped = len(lines) - OUTPUT_MAX_LINES
+        lines = (lines[:OUTPUT_MAX_LINES - 6]
+                 + [f"... ({dropped} more line(s) omitted)"] + lines[-6:])
+    return "\n".join(lines)
+
+
+def _first_existing(paths, names=()):
+    """First path that is a file; a directory is searched for `names`."""
+    for raw in paths:
+        if not raw:
+            continue
+        expanded = os.path.expandvars(os.path.expanduser(str(raw)))
+        if "%" in expanded:       # an unset Windows variable - not a real path
+            continue
+        candidate = Path(expanded)
+        if candidate.is_file():
+            return str(candidate)
+        if candidate.is_dir():
+            for name in names:
+                inner = candidate / name
+                if inner.is_file():
+                    return str(inner)
+    return None
+
+
+def find_chromedriver():
+    """Absolute path to a ChromeDriver binary, or None.
+
+    axe drives headless Chrome through ChromeDriver. When one is on the machine
+    we hand axe the exact path instead of relying on the copy npm would have
+    installed next to the CLI - that copy is missing whenever its download was
+    blocked, and mismatched with the local Chrome whenever it was not.
+    """
+    env = _first_existing(
+        [os.environ.get("CHROMEDRIVER_PATH"), os.environ.get("CHROMEDRIVER_TEST_PATH"),
+         os.environ.get("CHROMEWEBDRIVER")],
+        names=("chromedriver.exe", "chromedriver"))
+    if env:
+        return env
+    exe = shutil.which("chromedriver") or shutil.which("chromedriver.exe")
+    if exe:
+        return exe
+    if os.name == "nt":
+        return _first_existing(WINDOWS_CHROMEDRIVER_PATHS)
+    return None
+
+
+def find_chrome():
+    """Absolute path to a Chrome/Chromium binary, or None."""
+    env = _first_existing([os.environ.get("CHROME_PATH"), os.environ.get("CHROME_TEST_PATH")])
+    if env:
+        return env
+    for name in POSIX_CHROME_NAMES:
+        exe = shutil.which(name) or shutil.which(name + ".exe")
+        if exe:
+            return exe
+    if os.name == "nt":
+        return _first_existing(WINDOWS_CHROME_PATHS)
+    return None
+
+
+VERSION_RE = re.compile(r"(\d+)\.\d+\.\d+")
+
+
+def _binary_version(path, timeout=20):
+    """`<binary> --version` as a plain string, or "" if it cannot be asked."""
+    if not path:
+        return ""
+    try:
+        proc = subprocess.run([path, "--version"], check=False, timeout=timeout,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+    lines = clean_output(getattr(proc, "stdout", None)).splitlines()
+    return lines[0].strip() if lines else ""
+
+
+def check_runner(log=print):
+    """Report what the axe runner will use, before the first page is scanned.
+
+    Everything here is a warning, never a hard stop - a run should still be
+    attempted and report its real error. Returns the (driver, chrome) paths so
+    run_axe can pass them to axe.
+    """
+    log(f"Accessibility: runner {' '.join(AXE)}")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        log(f"Accessibility: node {node}")
+    else:
+        log("Accessibility: WARNING - node not found on PATH; axe cannot run without "
+            "Node.js. Install Node 18+ and re-run.")
+
+    driver = find_chromedriver()
+    chrome = find_chrome()
+    driver_version = _binary_version(driver)
+    chrome_version = _binary_version(chrome)
+
+    if driver:
+        log(f"Accessibility: chromedriver {driver}"
+            + (f" ({driver_version})" if driver_version else ""))
+    else:
+        log("Accessibility: WARNING - chromedriver not found on PATH. axe will fall back "
+            "to whatever driver ships with @axe-core/cli, which is absent when its "
+            "download was blocked. Install one that matches your Chrome "
+            "(npx browser-driver-manager install chrome) or set CHROMEDRIVER_PATH.")
+    if chrome:
+        log(f"Accessibility: chrome {chrome}"
+            + (f" ({chrome_version})" if chrome_version else ""))
+    else:
+        log("Accessibility: WARNING - no Chrome/Chromium found in the usual locations; "
+            "set CHROME_PATH if it is installed somewhere else.")
+
+    dm = VERSION_RE.search(driver_version)
+    cm = VERSION_RE.search(chrome_version)
+    if dm and cm and dm.group(1) != cm.group(1):
+        log(f"Accessibility: WARNING - ChromeDriver {dm.group(1)}.x does not match Chrome "
+            f"{cm.group(1)}.x. Every page will fail with SessionNotCreatedError until they "
+            f"match (npx browser-driver-manager install chrome).")
+    return driver, chrome
 
 
 # --------------------------------------------------------------------------
@@ -331,9 +515,24 @@ def fix_for(finding):
 # axe invocation + aggregation
 # --------------------------------------------------------------------------
 
+AXE_RESULT_KEYS = ("violations", "incomplete", "passes", "inapplicable")
+
+
+def is_axe_result(data):
+    """True when `data` really is an axe run result, not some other JSON that
+    happened to land in the output directory. A genuine result always carries
+    at least one of axe's outcome buckets."""
+    items = data if isinstance(data, list) else [data]
+    return any(isinstance(d, dict) and any(k in d for k in AXE_RESULT_KEYS)
+               for d in items)
+
+
 def normalize_axe(data, url=""):
     """@axe-core/cli saves an ARRAY of per-URL result objects; a raw axe.run()
-    result is a single object. Accept either shape."""
+    result is a single object. Accept either shape.
+
+    `passes` is kept as a count: it is the evidence that rules actually ran on
+    the page, which is what separates "clean" from "never audited"."""
     if isinstance(data, list):
         data = next((d for d in data if isinstance(d, dict)), {})
     if not isinstance(data, dict):
@@ -348,12 +547,19 @@ def normalize_axe(data, url=""):
         "url": data.get("url") or url,
         "violations": bucket("violations"),
         "incomplete": bucket("incomplete"),
+        "passes": len(bucket("passes")),
         "engine": version or "",
     }
 
 
-def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT):
-    """Run axe-core against one URL. Returns (normalized_result|None, secs, why)."""
+def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT,
+            chromedriver=None, chrome=None):
+    """Run axe-core against one URL.
+
+    Returns (normalized_result|None, seconds, why, output). `output` is the
+    runner's own stdout/stderr - never discarded, so a page that fails can say
+    why instead of vanishing into a silent "0 pages analyzed".
+    """
     tags = list(tags or RUN_TAGS)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -367,26 +573,51 @@ def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT):
                  # the CLI already runs headless chrome; these only relax the sandbox
                  # and cert handling so odd hosts still audit (cf. scan_env()).
                  "--chrome-options", "no-sandbox,disable-gpu,ignore-certificate-errors"]
+    # Pin the driver and the browser when we found them, rather than letting the
+    # CLI guess - the guess is what breaks on Windows and behind proxies.
+    driver = chromedriver if chromedriver is not None else find_chromedriver()
+    if driver:
+        cmd += ["--chromedriver-path", driver]
+    browser = chrome if chrome is not None else find_chrome()
+    if browser:
+        cmd += ["--chrome-path", browser]
+
     t0 = time.time()
     try:
-        # Without --exit axe returns 0 even when rules fail, so the saved result
-        # file - not the return code - is what says the page was really audited.
-        subprocess.run(cmd, cwd=str(out_dir), check=False, timeout=timeout + 30,
-                       env=scan_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except subprocess.TimeoutExpired:
-        return None, int(time.time() - t0), "timeout"
+        proc = subprocess.run(cmd, cwd=str(out_dir), check=False, timeout=timeout + 30,
+                              env=scan_env(), stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, encoding="utf-8", errors="replace")
+    except subprocess.TimeoutExpired as e:
+        return None, int(time.time() - t0), "timeout", clean_output(getattr(e, "output", ""))
     except FileNotFoundError:
-        return None, int(time.time() - t0), "axe CLI not found (Node.js required)"
+        return (None, int(time.time() - t0),
+                f"runner not found: {AXE[0]} (Node.js 18+ must be installed and on PATH)", "")
     except Exception as e:
-        return None, int(time.time() - t0), str(e)
+        return None, int(time.time() - t0), f"{type(e).__name__}: {e}", ""
+
     secs = int(time.time() - t0)
+    output = clean_output(getattr(proc, "stdout", None))
+    rc = getattr(proc, "returncode", 0)
+
+    # Without --exit axe returns 0 even when rules fail, so the saved result file
+    # - not the return code - is what says the page was really audited. A missing
+    # file plus a non-zero code is a runner failure, and the code is part of the
+    # story when the runner died before printing anything (npm does exactly that).
     if not (out_file.exists() and out_file.stat().st_size > 0):
-        return None, secs, "no result file"
+        why = "no result file"
+        if rc:
+            why += f"; axe exited {rc}"
+        if not output:
+            why += ("; the runner produced no output - usually npm failing to install "
+                    "@axe-core/cli or its driver")
+        return None, secs, why, output
     try:
         data = json.loads(out_file.read_text(encoding="utf-8"))
     except Exception as e:
-        return None, secs, f"unreadable result ({e})"
-    return normalize_axe(data, url), secs, ""
+        return None, secs, f"unreadable result ({e})", output
+    if not is_axe_result(data):
+        return None, secs, "result file is not an axe result", output
+    return normalize_axe(data, url), secs, "", output
 
 
 def _norm_impact(impact):
@@ -453,16 +684,31 @@ def aggregate(results):
     return finish(viol), finish(incomp), engine
 
 
-def evaluate_standards(findings, selected=None):
-    """Per-standard verdict: filter the violations to the standard's tag set."""
+def evaluate_standards(findings, selected=None, pages_analyzed=None):
+    """Per-standard verdict: filter the violations to the standard's tag set.
+
+    A verdict is only ever "pass" when pages were actually analyzed. An empty
+    violation list means one of two very different things - "axe checked the
+    pages and found nothing in scope" or "axe never ran" - and only the first
+    is a pass. Callers that know the page count pass `pages_analyzed`; 0 turns
+    every applicable standard into "unknown" instead of a false green.
+
+    `pages_analyzed=None` means "not tracked" and keeps the plain
+    violations-only behaviour, for callers evaluating a known set of findings.
+    """
+    scanned_nothing = pages_analyzed is not None and pages_analyzed <= 0
     out = []
     for sid in normalize_standards(selected):
         std = STANDARDS_BY_ID[sid]
         row = {"id": sid, "name": std["name"], "region": std["region"],
                "basis": std["basis"], "note": std.get("note", ""),
-               "rules": 0, "elements": 0, "pages": 0, "rule_ids": []}
+               "rules": 0, "elements": 0, "pages": 0, "rule_ids": [], "findings": []}
         if not std["applicable"]:
             row["verdict"] = "n/a"
+            out.append(row)
+            continue
+        if scanned_nothing:
+            row["verdict"] = "unknown"
             out.append(row)
             continue
         scope = set(std["tags"])
@@ -474,6 +720,7 @@ def evaluate_standards(findings, selected=None):
         row["rules"] = len(matched)
         row["pages"] = len(pages)
         row["rule_ids"] = [f["id"] for f in matched]
+        row["findings"] = matched
         row["verdict"] = "fail" if matched else "pass"
         out.append(row)
     return out
@@ -490,30 +737,60 @@ def scan_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=
         work_dir = tmp_holder
     work_dir = Path(work_dir)
 
-    log(f"Accessibility: axe-core {AXE_CORE_VERSION} on {len(urls)} page(s), "
+    pages_attempted = len(urls)
+    log(f"Accessibility: axe-core {AXE_CORE_VERSION} on {pages_attempted} page(s), "
         f"{concurrency} in parallel...")
-    results = []
+    driver, chrome = check_runner(log)
+
+    results, failures = [], []
+    seen_output = set()
     from concurrent.futures import ThreadPoolExecutor, as_completed
     with ThreadPoolExecutor(max_workers=max(1, int(concurrency or 1))) as pool:
-        futures = {pool.submit(run_axe, u, work_dir, tags, i): u
+        futures = {pool.submit(run_axe, u, work_dir, tags, i,
+                               chromedriver=driver, chrome=chrome): u
                    for i, u in enumerate(urls, 1)}
         for n, fut in enumerate(as_completed(futures), 1):
             u = futures[fut]
-            res, secs, why = fut.result()
+            res, secs, why, output = fut.result()
             if res:
                 results.append(res)
-                log(f"[{n}/{len(urls)}] a11y OK ({secs}s) {u}")
-            else:
-                log(f"[{n}/{len(urls)}] a11y skipped ({why}) {u}")
+                log(f"[{n}/{pages_attempted}] a11y OK ({secs}s, {len(res['violations'])} "
+                    f"violation rule(s), {res['passes']} check(s) passed) {u}")
+                continue
+            failures.append({"url": u, "why": why, "output": output})
+            log(f"[{n}/{pages_attempted}] a11y FAILED ({why}) {u}")
+            # The runner's own words, once per distinct error - the same broken
+            # driver on 30 pages should not bury the log 30 times over.
+            if output and output not in seen_output:
+                seen_output.add(output)
+                for line in output.splitlines():
+                    log(f"    axe: {line}")
+            elif output:
+                log("    axe: (same error as an earlier page)")
 
+    pages_analyzed = len(results)
+    pages_failed = pages_attempted - pages_analyzed
+    checks_passed = sum(r.get("passes", 0) for r in results)
     violations, incomplete, engine = aggregate(results)
-    log(f"Accessibility: {len(violations)} failing rule(s), "
-        f"{len(incomplete)} needing manual review.")
-    panel = evaluate_standards(violations, standards)
+
+    if pages_analyzed == 0:
+        log(f"Accessibility: SCAN FAILED - 0 of {pages_attempted} page(s) analyzed. "
+            f"No standard can be reported as compliant; the report will show every "
+            f"standard as 'Not determined'.")
+    else:
+        if pages_failed:
+            log(f"Accessibility: {pages_failed} of {pages_attempted} page(s) could not be "
+                f"analyzed - results below cover the {pages_analyzed} that were.")
+        log(f"Accessibility: {pages_analyzed}/{pages_attempted} page(s) analyzed, "
+            f"{checks_passed} check(s) passed, {len(violations)} failing rule(s), "
+            f"{len(incomplete)} needing manual review.")
+
+    panel = evaluate_standards(violations, standards, pages_analyzed=pages_analyzed)
     return build_accessibility_html(
         site_url, panel, violations, incomplete,
-        scanned=len(results), total=len(urls),
-        engine_version=engine or AXE_CORE_VERSION, tags=tags)
+        pages_analyzed=pages_analyzed, pages_attempted=pages_attempted,
+        engine_version=engine or AXE_CORE_VERSION, tags=tags,
+        failures=failures, checks_passed=checks_passed)
 
 
 # --------------------------------------------------------------------------
@@ -521,11 +798,12 @@ def scan_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=
 # --------------------------------------------------------------------------
 
 VERDICT_LABEL = {
-    "pass": "No violations (automated)",
-    "fail": "Violations found (automated)",
+    "pass": "Compliant (automated checks)",
+    "fail": "Not compliant (automated)",
+    "unknown": "Not determined &mdash; scan did not complete",
     "n/a": "Not applicable",
 }
-VERDICT_CLASS = {"pass": "ok", "fail": "bad", "n/a": "na"}
+VERDICT_CLASS = {"pass": "ok", "fail": "bad", "unknown": "unk", "n/a": "na"}
 
 IMPACT_BLURB = {
     "critical": "Blocks access outright for some users.",
@@ -565,6 +843,56 @@ def _pages_html(pages, scanned):
             f'<ul class="pages">{"".join(items)}{extra}</ul>')
 
 
+def _std_rules_html(row):
+    """The failing rules inside one standard's WCAG scope, with everything a
+    developer needs to act: rule id, impact, success criteria, the fix, and
+    which pages/elements it fires on."""
+    findings = row.get("findings") or []
+    if not findings:
+        return ""
+    items = []
+    for f in findings[:12]:
+        impact = _norm_impact(f.get("impact"))
+        sc = ", ".join(sc_label(s) for s in f.get("sc") or []) or "-"
+        pages = f.get("pages") or {}
+        paths = sorted({urlparse(u).path or "/" for u in pages})
+        where = f'{f.get("nodes", 0)} element(s) on {len(pages)} page(s)'
+        if paths:
+            where += ": " + ", ".join(paths[:4]) + (", ..." if len(paths) > 4 else "")
+        items.append(
+            f'<li><code class="rid">{html.escape(f.get("id"))}</code>'
+            f'<span class="imp {impact}">{impact}</span>'
+            f'<span class="scmini">{html.escape(sc)}</span>'
+            f'<div class="sfix"><b>Fix:</b> {html.escape(fix_for(f))}</div>'
+            f'<div class="swhere">{html.escape(where)}</div></li>')
+    more = (f'<li class="more">+{len(findings) - 12} more failing rule(s) &mdash; see '
+            f'&ldquo;Findings by impact&rdquo; below</li>' if len(findings) > 12 else "")
+    return f'<div class="srulesh">Failing rules in scope:</div><ul class="srules">{"".join(items)}{more}</ul>'
+
+
+def _failures_html(failures):
+    """Why the pages that could not be analyzed failed, in the runner's own
+    words - grouped so one broken driver reads as one problem."""
+    if not failures:
+        return ""
+    groups = {}
+    for f in failures:
+        key = (f.get("why") or "unknown error", f.get("output") or "")
+        groups.setdefault(key, []).append(f.get("url") or "")
+    items = []
+    for (why, output), urls in list(groups.items())[:6]:
+        sample = ", ".join(html.escape(u) for u in urls[:3])
+        if len(urls) > 3:
+            sample += f" (+{len(urls) - 3} more)"
+        detail = f'<pre class="snip">{html.escape(output)}</pre>' if output else ""
+        items.append(f'<li><b>{html.escape(why)}</b> &middot; {len(urls)} page(s)'
+                     f'<div class="scope">{sample}</div>{detail}</li>')
+    extra = (f'<li class="more">+{len(groups) - 6} more distinct error(s)</li>'
+             if len(groups) > 6 else "")
+    return (f'<div class="failh">Why pages failed</div>'
+            f'<ul class="fails">{"".join(items)}{extra}</ul>')
+
+
 def _finding_card(f, scanned, manual=False):
     sc = ", ".join(sc_label(s) for s in f.get("sc") or []) or "-"
     tags = ", ".join(t for t in (f.get("tags") or []) if not t.startswith("cat."))
@@ -586,10 +914,14 @@ def _finding_card(f, scanned, manual=False):
 
 
 def build_accessibility_html(site_url, panel, violations, incomplete,
-                             scanned=0, total=0, engine_version=AXE_CORE_VERSION,
-                             tags=None):
+                             pages_analyzed=0, pages_attempted=0,
+                             engine_version=AXE_CORE_VERSION, tags=None,
+                             failures=None, checks_passed=0):
     gen = datetime.now().strftime("%Y-%m-%d %H:%M")
     tags = list(tags or RUN_TAGS)
+    failures = list(failures or [])
+    pages_failed = max(0, pages_attempted - pages_analyzed)
+    analyzed = pages_analyzed > 0
 
     # --- per-standard compliance panel ---
     cards = []
@@ -597,50 +929,90 @@ def build_accessibility_html(site_url, panel, violations, incomplete,
         cls = VERDICT_CLASS[row["verdict"]]
         if row["verdict"] == "n/a":
             detail = html.escape(row.get("note") or "Not testable by automated page checks.")
+        elif row["verdict"] == "unknown":
+            detail = ("axe-core did not analyze a single page, so this standard was never "
+                      "evaluated. Treat this as no result &mdash; not as a pass.")
         elif row["verdict"] == "pass":
-            detail = "No violations of this standard's success criteria were detected by the automated checks."
+            detail = (f'Zero violations within this standard&rsquo;s WCAG scope across the '
+                      f'{pages_analyzed} page(s) analyzed.')
         else:
             detail = (f'{row["rules"]} failing rule(s) &middot; {row["elements"]} element(s) '
-                      f'&middot; {row["pages"]} page(s)')
-        rules = (f'<div class="srules">Failing rules: '
-                 f'{html.escape(", ".join(row["rule_ids"][:12]))}'
-                 f'{" +%d more" % (len(row["rule_ids"]) - 12) if len(row["rule_ids"]) > 12 else ""}</div>'
-                 if row["rule_ids"] else "")
+                      f'&middot; {row["pages"]} page(s) within this standard&rsquo;s WCAG scope')
         cards.append(
             f'<div class="std {cls}">'
             f'<div class="sh"><span class="verdict {cls}">{VERDICT_LABEL[row["verdict"]]}</span>'
             f'<b>{html.escape(row["name"])}</b>'
             f'<span class="reg">{html.escape(row["region"])}</span></div>'
             f'<div class="basis">Scope: {html.escape(row["basis"])}</div>'
-            f'<div class="sdetail">{detail}</div>{rules}</div>')
+            f'<div class="sdetail">{detail}</div>{_std_rules_html(row)}</div>')
     panel_html = "\n".join(cards) or '<p class="note">No standards selected.</p>'
+
+    # --- run summary: a failed scan says so before anything else ---
+    if not analyzed:
+        summary = (f'<div class="alert"><b>Scan failed &mdash; 0 of {pages_attempted} page(s) '
+                   f'analyzed.</b> axe-core produced no result for any queued page, so this '
+                   f'report contains no accessibility data at all. Every standard below reads '
+                   f'<b>Not determined</b>: none of them passed, and the empty findings list '
+                   f'means &ldquo;nothing was measured&rdquo;, not &ldquo;nothing is '
+                   f'wrong&rdquo;. Fix the errors below and re-run before drawing any '
+                   f'conclusion.</div>{_failures_html(failures)}')
+    elif failures:
+        summary = (f'<div class="warn"><b>Partial scan &mdash; {pages_failed} of '
+                   f'{pages_attempted} page(s) could not be analyzed.</b> Everything below '
+                   f'describes only the {pages_analyzed} page(s) that were; the pages that '
+                   f'failed are unmeasured, not clean.</div>{_failures_html(failures)}')
+    else:
+        summary = ""
 
     # --- findings grouped by impact ---
     counts = {i: 0 for i in IMPACT_ORDER}
     for f in violations:
         counts[_norm_impact(f.get("impact"))] += 1
 
-    groups = []
-    for impact in IMPACT_ORDER:
-        group = [f for f in violations if _norm_impact(f.get("impact")) == impact]
-        if not group:
-            continue
-        body = "\n".join(_finding_card(f, scanned) for f in group)
-        groups.append(
-            f'<h3 class="grp {impact}">{impact.title()} '
-            f'<span class="gc">{len(group)} rule(s)</span>'
-            f'<span class="gb">{IMPACT_BLURB[impact]}</span></h3>{body}')
-    findings_html = "\n".join(groups) or \
-        '<p class="clean">No violations detected by the automated checks on the scanned pages.</p>'
+    if not analyzed:
+        findings_html = ('<p class="nodata">No pages were analyzed, so no findings could be '
+                         'collected. This is not a clean result &mdash; the scan failed.</p>')
+        manual_html = ('<p class="nodata">No pages were analyzed, so nothing could be flagged '
+                       'for manual review.</p>')
+        manual_count = ""
+    else:
+        groups = []
+        for impact in IMPACT_ORDER:
+            group = [f for f in violations if _norm_impact(f.get("impact")) == impact]
+            if not group:
+                continue
+            body = "\n".join(_finding_card(f, pages_analyzed) for f in group)
+            groups.append(
+                f'<h3 class="grp {impact}">{impact.title()} '
+                f'<span class="gc">{len(group)} rule(s)</span>'
+                f'<span class="gb">{IMPACT_BLURB[impact]}</span></h3>{body}')
+        findings_html = "\n".join(groups) or \
+            (f'<p class="clean">No violations detected by the automated checks on the '
+             f'{pages_analyzed} page(s) analyzed ({checks_passed} check(s) passed).</p>')
 
-    manual_html = "\n".join(_finding_card(f, scanned, manual=True) for f in incomplete) or \
-        '<p class="clean">Nothing flagged for manual review on the scanned pages.</p>'
+        manual_html = "\n".join(_finding_card(f, pages_analyzed, manual=True) for f in incomplete) or \
+            '<p class="clean">Nothing flagged for manual review on the scanned pages.</p>'
+        inc_elements = sum(f.get("nodes", 0) for f in incomplete)
+        inc_pages = len({u for f in incomplete for u in (f.get("pages") or {})})
+        manual_count = (f'<p class="note"><b>{len(incomplete)} rule(s)</b> across '
+                        f'<b>{inc_elements} element(s)</b> on <b>{inc_pages} page(s)</b> '
+                        f'need a human decision.</p>' if incomplete else "")
 
-    stat_cards = "".join(
-        f'<div class="stat {i}"><b>{counts[i]}</b><span>{i}</span></div>'
-        for i in IMPACT_ORDER)
-    stat_cards += (f'<div class="stat manual"><b>{len(incomplete)}</b>'
-                   f'<span>manual review</span></div>')
+    # --- headline numbers ---
+    dash = "&mdash;"
+
+    def stat(value, label, cls):
+        return f'<div class="stat {cls}"><b>{value}</b><span>{label}</span></div>'
+
+    stat_cards = stat(f"{pages_analyzed}/{pages_attempted}", "pages analyzed", "pages")
+    if pages_failed:
+        stat_cards += stat(pages_failed, "pages failed", "failed")
+    for i in IMPACT_ORDER:
+        stat_cards += stat(counts[i] if analyzed else dash, i, i)
+    stat_cards += stat(len(incomplete) if analyzed else dash, "manual review", "manual")
+    stat_cards += stat(checks_passed if analyzed else dash, "checks passed", "passed")
+
+    failed_meta = f' &middot; {pages_failed} page(s) failed' if pages_failed else ""
 
     return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
@@ -649,7 +1021,7 @@ def build_accessibility_html(site_url, panel, violations, incomplete,
 <style>
   :root {{ --ink:#1c2430; --line:#e3e6ea; --bg:#f6f7f9; --card:#fff; --muted:#5b6672;
            --critical:#b3122b; --serious:#d6521f; --moderate:#b06f00; --minor:#3b7dbf;
-           --ok:#0a7d34; --bad:#b3122b; --na:#5b6672; --manual:#6b4fc4; }}
+           --ok:#0a7d34; --bad:#b3122b; --na:#5b6672; --unk:#9b2c2c; --manual:#6b4fc4; }}
   * {{ box-sizing:border-box; }}
   body {{ font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0;
           background:var(--bg); color:var(--ink); line-height:1.5; }}
@@ -659,6 +1031,13 @@ def build_accessibility_html(site_url, panel, violations, incomplete,
   .meta {{ color:var(--muted); font-size:13px; margin-bottom:14px; }}
   .banner {{ background:#fbf6e6; border:1px solid #efe1b0; color:#7a5c00; border-radius:10px;
              padding:12px 16px; font-size:13px; margin:14px 0 4px; }}
+  .alert {{ background:#fdf0f1; border:1px solid #f0c2c7; border-left:5px solid var(--bad);
+            color:#7d1223; border-radius:10px; padding:13px 16px; font-size:13.5px; margin:14px 0 4px; }}
+  .warn {{ background:#fff7ec; border:1px solid #f2d9b0; border-left:5px solid var(--moderate);
+           color:#7a4d00; border-radius:10px; padding:13px 16px; font-size:13.5px; margin:14px 0 4px; }}
+  .failh {{ font-size:13px; font-weight:700; margin:12px 0 2px; color:var(--bad); }}
+  ul.fails {{ margin:4px 0 0; padding-left:18px; font-size:12.5px; }}
+  ul.fails li {{ margin-bottom:8px; }}
   .stats {{ display:flex; gap:12px; margin:18px 0 8px; flex-wrap:wrap; }}
   .stat {{ background:var(--card); border:1px solid var(--line); border-radius:10px;
            padding:12px 16px; min-width:104px; text-align:center; }}
@@ -666,22 +1045,30 @@ def build_accessibility_html(site_url, panel, violations, incomplete,
   .stat span {{ font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }}
   .stat.critical b {{ color:var(--critical); }} .stat.serious b {{ color:var(--serious); }}
   .stat.moderate b {{ color:var(--moderate); }} .stat.minor b {{ color:var(--minor); }}
-  .stat.manual b {{ color:var(--manual); }}
+  .stat.manual b {{ color:var(--manual); }} .stat.passed b {{ color:var(--ok); }}
+  .stat.pages b {{ color:var(--ink); }} .stat.failed b {{ color:var(--bad); }}
   .stds {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:12px; }}
   .std {{ background:var(--card); border:1px solid var(--line); border-left:5px solid var(--line);
           border-radius:10px; padding:13px 16px; }}
   .std.ok {{ border-left-color:var(--ok); }} .std.bad {{ border-left-color:var(--bad); }}
   .std.na {{ border-left-color:var(--na); }}
+  .std.unk {{ border-left-color:var(--unk); background:#fdf7f7; }}
   .sh {{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; }}
   .sh b {{ font-size:15px; }}
   .verdict {{ font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
               padding:2px 9px; border-radius:20px; color:#fff; }}
   .verdict.ok {{ background:var(--ok); }} .verdict.bad {{ background:var(--bad); }}
-  .verdict.na {{ background:var(--na); }}
+  .verdict.na {{ background:var(--na); }} .verdict.unk {{ background:var(--unk); }}
   .reg {{ font-size:11px; background:#eef1f4; color:var(--muted); padding:1px 8px; border-radius:20px; }}
   .basis {{ font-size:12.5px; color:var(--muted); margin-top:6px; }}
   .sdetail {{ font-size:13px; margin-top:4px; }}
-  .srules {{ font-size:12px; color:var(--muted); margin-top:6px; word-break:break-word; }}
+  .srulesh {{ font-size:12px; font-weight:700; color:var(--muted); margin-top:9px;
+              text-transform:uppercase; letter-spacing:.03em; }}
+  ul.srules {{ margin:4px 0 0; padding-left:16px; font-size:12.5px; }}
+  ul.srules li {{ margin-bottom:8px; word-break:break-word; }}
+  .scmini {{ font-size:11.5px; color:var(--muted); margin-left:6px; }}
+  .sfix {{ margin-top:3px; }}
+  .swhere {{ color:var(--muted); margin-top:2px; }}
   .grp {{ margin:26px 0 8px; font-size:15px; text-transform:capitalize; }}
   .grp.critical {{ color:var(--critical); }} .grp.serious {{ color:var(--serious); }}
   .grp.moderate {{ color:var(--moderate); }} .grp.minor {{ color:var(--minor); }}
@@ -715,13 +1102,15 @@ def build_accessibility_html(site_url, panel, violations, incomplete,
            font-size:11px; white-space:pre-wrap; word-break:break-all; overflow:auto; }}
   .more {{ color:var(--muted); }}
   .clean {{ color:var(--ok); font-size:15px; }}
+  .nodata {{ color:var(--bad); font-size:15px; font-weight:600; }}
   .note {{ color:var(--muted); font-size:13px; }}
   @media print {{ body {{ background:#fff; }} .finding, .std {{ break-inside:avoid; }} }}
 </style></head>
 <body><div class="wrap">
   <h1>Accessibility Report &mdash; Automated checks</h1>
-  <div class="meta">{html.escape(site_url)} &middot; {scanned} of {total} page(s) analyzed
+  <div class="meta">{html.escape(site_url)} &middot; {pages_analyzed} of {pages_attempted} page(s) analyzed{failed_meta}
     &middot; axe-core {html.escape(str(engine_version))} &middot; Generated {gen}</div>
+  {summary}
   <div class="banner"><b>Automated checks only.</b> These results come from axe-core rules run
     against the rendered pages. Automated testing can surface only a portion of WCAG failures
     (many criteria require human judgement), so this report describes automated check results
@@ -737,6 +1126,7 @@ def build_accessibility_html(site_url, panel, violations, incomplete,
 
   <h2>Needs manual review</h2>
   <p class="note">axe could not decide these automatically &mdash; a person has to confirm them.</p>
+  {manual_count}
   {manual_html}
 
   <p class="meta" style="margin-top:26px">Generated with axe-core

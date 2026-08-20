@@ -53,7 +53,7 @@ DEFAULT_INCOMPLETE = [
 ]
 
 
-def axe_payload(url, violations=None, incomplete=None, version="4.10.2"):
+def axe_payload(url, violations=None, incomplete=None, version="4.10.2", passes=3):
     """The shape `@axe-core/cli --save` writes: an array of per-URL results."""
     return [{
         "url": url,
@@ -61,32 +61,48 @@ def axe_payload(url, violations=None, incomplete=None, version="4.10.2"):
         "testEngine": {"name": "axe-core", "version": version},
         "violations": DEFAULT_VIOLATIONS if violations is None else violations,
         "incomplete": DEFAULT_INCOMPLETE if incomplete is None else incomplete,
-        "passes": [],
+        "passes": [{"id": f"passing-rule-{i}", "nodes": []} for i in range(passes)],
         "inapplicable": [],
     }]
 
 
 class FakeAxe:
     """Stands in for the axe CLI: records the argv it was handed and writes the
-    JSON result file the real CLI would have written."""
+    JSON result file the real CLI would have written.
 
-    def __init__(self, payload_for=None, fail_urls=(), write_file=True):
+    Anything without a URL in its argv is a probe (`<binary> --version`), not a
+    page audit - the scanner runs those to check its ChromeDriver, so the stub
+    answers them without polluting `calls`.
+    """
+
+    def __init__(self, payload_for=None, fail_urls=(), write_file=True,
+                 output="", fail_output=None, fail_code=1):
         self.calls = []
+        self.probes = []
         self.payload_for = payload_for or (lambda url: axe_payload(url))
         self.fail_urls = set(fail_urls)
         self.write_file = write_file
+        self.output = output
+        self.fail_output = output if fail_output is None else fail_output
+        self.fail_code = fail_code
 
     def __call__(self, cmd, **kwargs):
         cmd = list(cmd)
+        url = next((a for a in cmd if a.startswith("http")), None)
+        if url is None:                       # a --version probe, not an audit
+            self.probes.append({"cmd": cmd, "kwargs": kwargs})
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
         self.calls.append({"cmd": cmd, "kwargs": kwargs})
-        url = next(a for a in cmd if a.startswith("http"))
         out_dir = Path(cmd[cmd.index("--dir") + 1])
         name = cmd[cmd.index("--save") + 1]
-        if self.write_file and url not in self.fail_urls:
+        wrote = self.write_file and url not in self.fail_urls
+        if wrote:
             out_dir.mkdir(parents=True, exist_ok=True)
             (out_dir / name).write_text(json.dumps(self.payload_for(url)), encoding="utf-8")
         # axe exits 1 when it finds violations - the result file is the signal.
-        return subprocess.CompletedProcess(cmd, 1)
+        return subprocess.CompletedProcess(
+            cmd, 1 if wrote else self.fail_code,
+            stdout=self.output if wrote else self.fail_output, stderr="")
 
     @property
     def urls(self):
@@ -104,3 +120,11 @@ def fake_axe(monkeypatch):
     stub = FakeAxe()
     monkeypatch.setattr(a11y.subprocess, "run", stub)
     return stub
+
+
+@pytest.fixture(autouse=True)
+def steady_browser_lookup(monkeypatch):
+    """Pin the ChromeDriver/Chrome discovery so the argv a test sees does not
+    depend on what happens to be installed on the machine running the suite."""
+    monkeypatch.setattr(a11y, "find_chromedriver", lambda: None)
+    monkeypatch.setattr(a11y, "find_chrome", lambda: None)

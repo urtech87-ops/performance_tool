@@ -133,7 +133,8 @@ def test_accessibility_only_writes_its_report_without_a_deep_audit(runs_dir, cra
 
     page = (run / "accessibility.html").read_text(encoding="utf-8")
     assert "axe-core" in page                         # a real report, not a stub
-    assert procs.axe.urls == ["https://x.test/", "https://x.test/about/"]
+    # the pages are audited in parallel, so compare the set, not the order
+    assert sorted(procs.axe.urls) == ["https://x.test/", "https://x.test/about/"]
     assert any("skipping the deep audit" in line for line in logged)
 
 
