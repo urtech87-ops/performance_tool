@@ -1,6 +1,6 @@
 """A report may never claim compliance for something it did not measure.
 
-Two shapes of run are pinned here, both with the axe runner stubbed:
+Two shapes of run are pinned here, both with the Node runner stubbed:
 
   (a) the runner returns a real violations set  -> the standards in scope read
       "Not compliant", name the failing rules, and carry impact / WCAG SC /
@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 import accessibility_scan as a11y
-from conftest import FakeAxe, axe_payload, violation
+from conftest import FakeRunner, axe_payload, violation
 
 
 PAGES = ["https://x.test/", "https://x.test/about/"]
@@ -45,11 +45,14 @@ REAL_INCOMPLETE = [
               "aria-hidden elements must not be focusable"),
 ]
 
-# The error a real broken run prints: an axe/ChromeDriver mismatch.
-DRIVER_ERROR = (
-    "Running axe-core 4.13.0 in chrome-headless\n"
-    "Error: session not created: This version of ChromeDriver only supports "
-    "Chrome version 147\nCurrent browser version is 141.0.7390.37"
+# What a real broken run prints: the browser never came up, so the page was
+# never audited. (The ChromeDriver version mismatch this used to be is gone
+# with the CLI - Playwright's Chromium cannot drift out of step - but a page
+# that fails for any other reason must still be reported, never assumed clean.)
+RUNNER_ERROR = (
+    "could not launch Playwright's Chromium: browserType.launch: Executable "
+    "doesn't exist at /root/.cache/ms-playwright/chromium-1187/chrome-linux/chrome\n"
+    "Install the browser with: npx playwright install chromium"
 )
 
 GREEN_PHRASES = ("Compliant (automated checks)", "No violations detected by the automated checks",
@@ -69,7 +72,7 @@ def scan(monkeypatch, stub, standards=None, log=None):
 
 @pytest.fixture
 def failing_report(monkeypatch):
-    stub = FakeAxe(payload_for=lambda url: axe_payload(
+    stub = FakeRunner(payload_for=lambda url: axe_payload(
         url, violations=REAL_VIOLATIONS, incomplete=REAL_INCOMPLETE, passes=41))
     return scan(monkeypatch, stub)
 
@@ -108,7 +111,7 @@ def test_each_failing_rule_carries_impact_sc_fix_and_where_it_fires(failing_repo
 def test_a_standard_outside_the_violation_scope_is_still_compliant(monkeypatch):
     """target-size is WCAG 2.2 only, so 2.2 AA fails while Section 508 (2.0 AA)
     is a genuine pass - a pass is only ever stated for pages that were read."""
-    stub = FakeAxe(payload_for=lambda url: axe_payload(
+    stub = FakeRunner(payload_for=lambda url: axe_payload(
         url, incomplete=[], violations=[REAL_VIOLATIONS[2]]))
     out = scan(monkeypatch, stub, standards=["wcag22aa", "section508"])
     assert "Not compliant (automated)" in out          # WCAG 2.2 AA
@@ -137,7 +140,7 @@ def test_the_run_reports_analyzed_attempted_and_passes(failing_report):
 @pytest.fixture
 def broken_run(monkeypatch):
     logged = []
-    stub = FakeAxe(write_file=False, fail_output=DRIVER_ERROR, fail_code=2)
+    stub = FakeRunner(emit_result=False, fail_output=RUNNER_ERROR, fail_code=2)
     out = scan(monkeypatch, stub, log=logged.append)
     return out, logged
 
@@ -177,21 +180,21 @@ def test_an_empty_findings_list_is_not_presented_as_clean(broken_run):
 def test_the_report_carries_the_runner_error_not_just_a_blank(broken_run):
     report, _ = broken_run
     assert "Why pages failed" in report
-    assert "session not created" in report
-    assert "only supports Chrome version 147" in report
+    assert "could not launch Playwright&#x27;s Chromium" in report
+    assert "npx playwright install chromium" in report
 
 
 def test_the_scan_log_carries_the_runner_stderr_verbatim(broken_run):
     _, logged = broken_run
     assert any("a11y FAILED" in line for line in logged)
-    assert any("session not created" in line for line in logged)
-    assert any("axe exited 2" in line for line in logged)
+    assert any("could not launch Playwright's Chromium" in line for line in logged)
+    assert any("runner exited 2" in line for line in logged)
     assert any("SCAN FAILED - 0 of 2 page(s) analyzed" in line for line in logged)
 
 
 def test_the_same_error_is_not_repeated_for_every_page(broken_run):
     _, logged = broken_run
-    assert sum("session not created" in line for line in logged) == 1
+    assert sum("Executable doesn't exist" in line for line in logged) == 1
     assert any("same error as an earlier page" in line for line in logged)
 
 
@@ -208,7 +211,7 @@ def test_evaluate_standards_refuses_to_pass_zero_analyzed_pages():
 
 def test_a_partial_scan_says_so_and_scopes_its_results(monkeypatch):
     logged = []
-    stub = FakeAxe(fail_urls={"https://x.test/about/"}, fail_output=DRIVER_ERROR)
+    stub = FakeRunner(fail_urls={"https://x.test/about/"}, fail_output=RUNNER_ERROR)
     out = scan(monkeypatch, stub, log=logged.append)
     assert "1 of 2 page(s) analyzed" in out
     assert "1 page(s) failed" in out
@@ -222,58 +225,53 @@ def test_a_partial_scan_says_so_and_scopes_its_results(monkeypatch):
 # --------------------------------------------------------------------------
 
 def test_run_axe_hands_back_the_runner_output_on_failure(monkeypatch, tmp_path):
-    stub = FakeAxe(write_file=False, fail_output=DRIVER_ERROR, fail_code=2)
+    stub = FakeRunner(emit_result=False, fail_output=RUNNER_ERROR, fail_code=2)
     monkeypatch.setattr(a11y.subprocess, "run", stub)
     result, _secs, why, output = a11y.run_axe("https://x.test/", tmp_path, index=1)
     assert result is None
-    assert "axe exited 2" in why
-    assert "session not created" in output
+    assert "runner exited 2" in why
+    assert "could not launch Playwright's Chromium" in output
 
 
-def test_run_axe_captures_output_instead_of_discarding_it(fake_axe, tmp_path):
+def test_run_axe_captures_output_instead_of_discarding_it(fake_runner, tmp_path):
+    """stdout carries the result, stderr the diagnostics - both are read, so a
+    page that fails can say why."""
     a11y.run_axe("https://x.test/", tmp_path, index=1)
-    kwargs = fake_axe.calls[0]["kwargs"]
+    kwargs = fake_runner.calls[0]["kwargs"]
     assert kwargs["stdout"] is a11y.subprocess.PIPE
-    assert kwargs["stderr"] is a11y.subprocess.STDOUT
+    assert kwargs["stderr"] is a11y.subprocess.PIPE
 
 
-def test_run_axe_pins_the_chromedriver_and_chrome_it_found(monkeypatch, fake_axe, tmp_path):
-    monkeypatch.setattr(a11y, "find_chromedriver", lambda: "/opt/bin/chromedriver")
-    monkeypatch.setattr(a11y, "find_chrome", lambda: "/opt/bin/chrome")
+def test_run_axe_drives_the_playwright_runner_and_not_a_chromedriver(fake_runner, tmp_path):
+    """No ChromeDriver anywhere: Node runs our script, Playwright supplies the
+    browser, so the two can never be a version apart."""
     a11y.run_axe("https://x.test/", tmp_path, index=1)
-    cmd = fake_axe.calls[0]["cmd"]
-    assert cmd[cmd.index("--chromedriver-path") + 1] == "/opt/bin/chromedriver"
-    assert cmd[cmd.index("--chrome-path") + 1] == "/opt/bin/chrome"
-    # still headless-chrome with the relaxed cert handling the other scans use
-    opts = cmd[cmd.index("--chrome-options") + 1]
-    assert "no-sandbox" in opts and "ignore-certificate-errors" in opts
-    assert fake_axe.calls[0]["kwargs"]["env"]["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
+    cmd = fake_runner.calls[0]["cmd"]
+    assert cmd[0] == a11y.NODE
+    assert Path(cmd[1]).name == "axe_playwright_runner.js"
+    assert not any("chromedriver" in str(a).lower() for a in cmd)
+    assert fake_runner.calls[0]["kwargs"]["env"]["NODE_TLS_REJECT_UNAUTHORIZED"] == "0"
 
 
-def test_npx_skips_install_scripts_so_a_blocked_driver_download_cannot_abort_it():
-    """The chromedriver postinstall downloads a binary from Google; when that
-    fails npm aborts `npx` before axe ever starts, which is what made every page
-    fail silently. We install the CLI without scripts and pin the driver."""
-    if a11y.AXE[0].endswith("npx") or a11y.AXE[0].endswith("npx.cmd"):
-        assert "--ignore-scripts" in a11y.AXE
+def test_the_scanner_no_longer_knows_how_to_find_a_chromedriver():
+    """The mismatch was only reachable through the CLI's driver; the CLI and the
+    driver discovery that fed it are gone, not left lying around to be reused."""
+    for gone in ("find_chromedriver", "find_chrome", "AXE", "AXE_CLI_PACKAGE"):
+        assert not hasattr(a11y, gone), gone
 
 
-def test_a_result_file_that_is_not_an_axe_result_is_a_failure(monkeypatch, tmp_path):
-    """A file on disk is not proof of an audit - it has to carry axe's buckets."""
-    def writes_junk(cmd, **kwargs):
-        cmd = list(cmd)
-        out_dir = Path(cmd[cmd.index("--dir") + 1])
-        out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / cmd[cmd.index("--save") + 1]).write_text('{"hello": "world"}',
-                                                            encoding="utf-8")
-        return a11y.subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+def test_output_that_is_not_an_axe_result_is_a_failure(monkeypatch, tmp_path):
+    """JSON on stdout is not proof of an audit - it has to carry axe's buckets."""
+    def prints_junk(cmd, **kwargs):
+        return a11y.subprocess.CompletedProcess(list(cmd), 0,
+                                                stdout='{"hello": "world"}', stderr="")
 
-    monkeypatch.setattr(a11y.subprocess, "run", writes_junk)
+    monkeypatch.setattr(a11y.subprocess, "run", prints_junk)
     result, _secs, why, _out = a11y.run_axe("https://x.test/", tmp_path, index=1)
-    assert result is None and why == "result file is not an axe result"
+    assert result is None and why == "runner output is not an axe result"
 
 
-def test_a_real_axe_result_reports_violations_incomplete_and_passes(fake_axe, tmp_path):
+def test_a_real_axe_result_reports_violations_incomplete_and_passes(fake_runner, tmp_path):
     result, _secs, why, _out = a11y.run_axe("https://x.test/", tmp_path, index=1)
     assert why == ""
     assert result["violations"] and result["incomplete"]

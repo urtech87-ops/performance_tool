@@ -20,11 +20,12 @@ Optional, self-contained add-ons (each writes its own page into the run folder):
 Requirements on the machine that RUNS this:
   - Python 3.9+  ->  pip install flask
   - Node.js (for `npx unlighthouse-ci`, `npx lighthouse` and, if the optional
-    accessibility scan is used, `npx @axe-core/cli`)
+    accessibility scan is used, `@axe-core/playwright`)
   - Chrome / Edge / Brave (Lighthouse drives it; also used for PDF)
-  - the accessibility scan additionally needs a ChromeDriver matching the
-    installed Chrome - `npx browser-driver-manager install chrome` provides
-    one, or set CHROMEDRIVER_PATH / CHROME_PATH to point at your own
+  - the accessibility scan brings its own browser: on first run it installs
+    @axe-core/playwright plus Playwright's bundled Chromium into a cache dir
+    (override with A11Y_RUNNER_HOME), so it needs neither the machine's Chrome
+    nor a ChromeDriver matching it
 
 Run:
     pip install flask

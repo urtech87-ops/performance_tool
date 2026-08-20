@@ -1,4 +1,4 @@
-"""Shared fixtures: a fake axe subprocess so the suite never needs a browser."""
+"""Shared fixtures: a fake Node runner so the suite never needs a browser."""
 
 import json
 import subprocess
@@ -54,59 +54,65 @@ DEFAULT_INCOMPLETE = [
 
 
 def axe_payload(url, violations=None, incomplete=None, version="4.10.2", passes=3):
-    """The shape `@axe-core/cli --save` writes: an array of per-URL results."""
-    return [{
+    """The shape the Node runner prints: one axe result object per page."""
+    return {
         "url": url,
         "timestamp": "2026-08-19T00:00:00.000Z",
         "testEngine": {"name": "axe-core", "version": version},
         "violations": DEFAULT_VIOLATIONS if violations is None else violations,
         "incomplete": DEFAULT_INCOMPLETE if incomplete is None else incomplete,
-        "passes": [{"id": f"passing-rule-{i}", "nodes": []} for i in range(passes)],
+        "passes": [{"id": f"passing-rule-{i}"} for i in range(passes)],
         "inapplicable": [],
-    }]
+    }
 
 
-class FakeAxe:
-    """Stands in for the axe CLI: records the argv it was handed and writes the
-    JSON result file the real CLI would have written.
+FAKE_CHROMIUM = "/fake/playwright/chromium"
 
-    Anything without a URL in its argv is a probe (`<binary> --version`), not a
-    page audit - the scanner runs those to check its ChromeDriver, so the stub
-    answers them without polluting `calls`.
+
+class FakeRunner:
+    """Stands in for `node axe_playwright_runner.js`: records the argv it was
+    handed and prints, on stdout, the JSON result the real runner would print.
+
+    Anything without a `--url` is a setup probe (the "where is Chromium"
+    question ensure_runner asks before the first page), not a page audit - the
+    stub answers those with a browser path, without polluting `calls`.
     """
 
-    def __init__(self, payload_for=None, fail_urls=(), write_file=True,
-                 output="", fail_output=None, fail_code=1):
+    def __init__(self, payload_for=None, fail_urls=(), emit_result=True,
+                 output="", fail_output=None, fail_code=1, chromium=FAKE_CHROMIUM):
         self.calls = []
         self.probes = []
         self.payload_for = payload_for or (lambda url: axe_payload(url))
         self.fail_urls = set(fail_urls)
-        self.write_file = write_file
+        self.emit_result = emit_result
         self.output = output
         self.fail_output = output if fail_output is None else fail_output
         self.fail_code = fail_code
+        self.chromium = chromium
+
+    @staticmethod
+    def _url(cmd):
+        return cmd[cmd.index("--url") + 1] if "--url" in cmd else None
 
     def __call__(self, cmd, **kwargs):
         cmd = list(cmd)
-        url = next((a for a in cmd if a.startswith("http")), None)
-        if url is None:                       # a --version probe, not an audit
+        url = self._url(cmd)
+        if url is None:                       # a setup probe, not a page audit
             self.probes.append({"cmd": cmd, "kwargs": kwargs})
-            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout=self.chromium, stderr="")
         self.calls.append({"cmd": cmd, "kwargs": kwargs})
-        out_dir = Path(cmd[cmd.index("--dir") + 1])
-        name = cmd[cmd.index("--save") + 1]
-        wrote = self.write_file and url not in self.fail_urls
-        if wrote:
-            out_dir.mkdir(parents=True, exist_ok=True)
-            (out_dir / name).write_text(json.dumps(self.payload_for(url)), encoding="utf-8")
-        # axe exits 1 when it finds violations - the result file is the signal.
+        if not self.emit_result or url in self.fail_urls:
+            # A page the runner could not audit: nothing on stdout, the reason
+            # on stderr, and a non-zero exit.
+            return subprocess.CompletedProcess(cmd, self.fail_code, stdout="",
+                                               stderr=self.fail_output)
+        payload = json.dumps(self.payload_for(url))
         return subprocess.CompletedProcess(
-            cmd, 1 if wrote else self.fail_code,
-            stdout=self.output if wrote else self.fail_output, stderr="")
+            cmd, 0, stdout=f"{a11y.RESULT_MARKER}{payload}\n", stderr=self.output)
 
     @property
     def urls(self):
-        return [next(a for a in c["cmd"] if a.startswith("http")) for c in self.calls]
+        return [self._url(c["cmd"]) for c in self.calls]
 
     @property
     def tags(self):
@@ -115,16 +121,20 @@ class FakeAxe:
 
 
 @pytest.fixture
-def fake_axe(monkeypatch):
-    """Replace the axe subprocess call; hand the stub back for assertions."""
-    stub = FakeAxe()
+def fake_runner(monkeypatch):
+    """Replace the Node runner subprocess; hand the stub back for assertions."""
+    stub = FakeRunner()
     monkeypatch.setattr(a11y.subprocess, "run", stub)
     return stub
 
 
 @pytest.fixture(autouse=True)
-def steady_browser_lookup(monkeypatch):
-    """Pin the ChromeDriver/Chrome discovery so the argv a test sees does not
-    depend on what happens to be installed on the machine running the suite."""
-    monkeypatch.setattr(a11y, "find_chromedriver", lambda: None)
-    monkeypatch.setattr(a11y, "find_chrome", lambda: None)
+def runner_home(tmp_path, monkeypatch):
+    """Point the runner at a throwaway home with its npm packages already in
+    place, so no test can install anything, touch the machine's real cache dir,
+    or depend on what happens to be installed on it."""
+    home = tmp_path / "runner-home"
+    for package in a11y.RUNNER_DEPS:
+        (home / "node_modules" / package).mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("A11Y_RUNNER_HOME", str(home))
+    return home

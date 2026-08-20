@@ -9,13 +9,14 @@ CLI) are stubbed, so nothing here needs Node or a browser.
 
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
 import accessibility_scan as a11y
 import dashboard
 
-from conftest import FakeAxe
+from conftest import FakeRunner
 
 
 ROUTES = [{"path": "/"}, {"path": "/about/"}]
@@ -35,7 +36,6 @@ def crawl(monkeypatch):
     monkeypatch.setattr(dashboard, "DRYRUN", False)
 
     def fake_run_stream(cmd, cwd, log, env=None):
-        from pathlib import Path
         d = Path(cwd) / ".unlighthouse"
         d.mkdir(parents=True, exist_ok=True)
         (d / "ci-result.json").write_text(json.dumps({"routes": ROUTES}), encoding="utf-8")
@@ -45,21 +45,21 @@ def crawl(monkeypatch):
 
 
 class Subprocesses:
-    """One stub for both CLIs: axe calls are served by FakeAxe, lighthouse
-    calls are recorded (and write the report file the real CLI would)."""
+    """One stub for both runners: everything Node starts is the accessibility
+    runner and is served by FakeRunner, lighthouse calls are recorded (and
+    write the report file the real CLI would)."""
 
     def __init__(self):
-        self.axe = FakeAxe()
+        self.axe = FakeRunner()
         self.lighthouse = []
 
     def __call__(self, cmd, **kwargs):
         cmd = list(cmd)
-        if "--save" in cmd:                       # the axe CLI
+        if Path(str(cmd[0])).name in ("node", "node.exe"):   # the axe runner
             return self.axe(cmd, **kwargs)
         self.lighthouse.append(cmd)               # lighthouse
         out = next((a for a in cmd if a.startswith("--output-path=")), None)
         if out:
-            from pathlib import Path
             stem = Path(out.split("=", 1)[1])
             stem.parent.mkdir(parents=True, exist_ok=True)
             stem.with_name(stem.name + ".report.json").write_text("{}", encoding="utf-8")
