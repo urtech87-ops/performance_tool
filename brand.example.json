@@ -1,0 +1,16 @@
+{
+  "agency_name": "Northbeam Studio",
+  "agency_logo": "assets/northbeam-logo.svg",
+  "agency_url": "https://northbeam.example",
+
+  "client_name": "Harbor Lane",
+  "client_logo": "",
+
+  "primary": "#1f4fd8",
+  "secondary": "#7a3ff2",
+
+  "report_title": "Website Health Report",
+  "report_subtitle": "Performance, accessibility, SEO and security",
+  "contact": "audits@northbeam.example",
+  "footer_note": "Confidential - prepared for Harbor Lane"
+}

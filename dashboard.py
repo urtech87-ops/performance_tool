@@ -253,8 +253,54 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
     elif deep and lh_on and DRYRUN:
         log("[dry-run] deep-audit reports fabricated")
 
-    # 3) consolidate (only when at least one Lighthouse category was selected)
+    # 3) the optional scans run BEFORE the report is built, so their findings
+    #    can go into it. Each still writes its own standalone page, exactly as
+    #    it always did - the consolidated report is additional, not a
+    #    replacement.
+    def scan_urls():
+        base = origin_of(url)
+        return [urljoin(base + "/", ((r.get("path") or "/").replace("&amp;", "&")).lstrip("/"))
+                for r in routes[:max_pages]] or [url]
+
+    security_data = None
+    if security and not DRYRUN:
+        try:
+            import security_scan as sec
+            security_data = sec.collect_site(url, scan_urls(), log=log)
+            (run_dir / "security.html").write_text(sec.html_from(security_data), encoding="utf-8")
+            log("Security report ready.")
+        except Exception as e:
+            security_data = None
+            log(f"(Security scan failed: {e})")
+    elif security and DRYRUN:
+        (run_dir / "security.html").write_text("<html><body>dry-run security</body></html>", encoding="utf-8")
+        log("[dry-run] security report fabricated")
+
+    a11y_data = None
+    if a11y and not DRYRUN:
+        try:
+            import accessibility_scan as a11y_mod
+            a11y_data = a11y_mod.collect_site(url, scan_urls(), standards=standards,
+                                              concurrency=concurrency,
+                                              work_dir=run_dir / "axe", log=log)
+            (run_dir / "accessibility.html").write_text(
+                a11y_mod.html_from(a11y_data), encoding="utf-8")
+            log("Accessibility report ready.")
+        except Exception as e:
+            a11y_data = None
+            log(f"(Accessibility scan failed: {e})")
+    elif a11y and DRYRUN:
+        (run_dir / "accessibility.html").write_text(
+            "<html><body>dry-run accessibility</body></html>", encoding="utf-8")
+        log("[dry-run] accessibility report fabricated")
+
+    # 4) one consolidated report covering every category that ran
+    # Which modes produce a report is unchanged: a Lighthouse category still has
+    # to have run. What changed is its contents - the accessibility and security
+    # findings from this same run now go into it instead of living only on their
+    # own pages.
     report_html = run_dir / "report.html"
+    wrote_report = False
     if lh_on:
         log("Building consolidated report...")
         ci_pages = cr.load_ci_results([run_dir])
@@ -262,8 +308,15 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         pages = cr.merge(ci_pages, lhr_pages)
         if pages:
             report_html.write_text(
-                cr.build_html(pages, [run_dir], out_path=str(report_html), categories=categories),
+                cr.build_html(pages, [run_dir], out_path=str(report_html),
+                              categories=categories, site_url=url, device=device,
+                              accessibility=a11y_data, security=security_data,
+                              standards=standards,
+                              scope={"pages_crawled": len(routes),
+                                     "pages_deep_audited": min(len(routes), max_pages) if deep else 0,
+                                     "samples": samples, "max_pages": max_pages}),
                 encoding="utf-8")
+            wrote_report = True
             log(f"Report ready: {len(pages)} page(s).")
         else:
             log("No performance data produced.")
@@ -271,46 +324,11 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         log("No Lighthouse category selected - skipping the deep audit "
             "and the performance report.")
 
-    # --- optional security scan (additive; independent of performance) ---
-    if security and not DRYRUN:
+    # 5) the print-perfect PDF of whatever the report ended up covering
+    if not DRYRUN and wrote_report and report_html.exists():
         try:
-            import security_scan as sec
-            base = origin_of(url)
-            sec_urls = [urljoin(base + "/", ((r.get("path") or "/").replace("&amp;", "&")).lstrip("/"))
-                        for r in routes[:max_pages]] or [url]
-            sec_html = sec.scan_site(url, sec_urls, log=log)
-            (run_dir / "security.html").write_text(sec_html, encoding="utf-8")
-            log("Security report ready.")
-        except Exception as e:
-            log(f"(Security scan failed: {e})")
-    elif security and DRYRUN:
-        (run_dir / "security.html").write_text("<html><body>dry-run security</body></html>", encoding="utf-8")
-        log("[dry-run] security report fabricated")
-
-    # --- optional accessibility scan (additive; independent of performance) ---
-    if a11y and not DRYRUN:
-        try:
-            import accessibility_scan as a11y_mod
-            base = origin_of(url)
-            a11y_urls = [urljoin(base + "/", ((r.get("path") or "/").replace("&amp;", "&")).lstrip("/"))
-                         for r in routes[:max_pages]] or [url]
-            a11y_html = a11y_mod.scan_site(url, a11y_urls, standards=standards,
-                                           concurrency=concurrency,
-                                           work_dir=run_dir / "axe", log=log)
-            (run_dir / "accessibility.html").write_text(a11y_html, encoding="utf-8")
-            log("Accessibility report ready.")
-        except Exception as e:
-            log(f"(Accessibility scan failed: {e})")
-    elif a11y and DRYRUN:
-        (run_dir / "accessibility.html").write_text(
-            "<html><body>dry-run accessibility</body></html>", encoding="utf-8")
-        log("[dry-run] accessibility report fabricated")
-
-    # optional PDF (only when a performance report exists)
-    if not DRYRUN and lh_on and report_html.exists():
-        try:
-            cr.html_to_pdf(str(report_html), str(run_dir / "report.pdf"))
-            log("PDF exported.")
+            info = cr.html_to_pdf(str(report_html), str(run_dir / "report.pdf"), log=log)
+            log(f"PDF exported (paginated by {info['engine']}).")
         except Exception as e:
             log(f"(PDF skipped: {e})")
 

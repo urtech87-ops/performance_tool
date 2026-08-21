@@ -796,8 +796,14 @@ def evaluate_standards(findings, selected=None, pages_analyzed=None):
     return out
 
 
-def scan_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=print):
-    """Run axe over every URL and return the accessibility report HTML."""
+def collect_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=print):
+    """Run axe over every URL and return the results as data.
+
+    Same work `scan_site` has always done - this is only the point where the
+    run's results are handed back as a dict instead of straight into the HTML
+    builder, so the consolidated report can render them too. `scan_site` still
+    returns the standalone accessibility page and is unchanged from a caller's
+    point of view."""
     standards = normalize_standards(standards)
     tags = run_tags(standards)
     urls = list(urls) or [site_url]
@@ -855,11 +861,37 @@ def scan_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=
             f"{len(incomplete)} needing manual review.")
 
     panel = evaluate_standards(violations, standards, pages_analyzed=pages_analyzed)
+    return {
+        "site_url": site_url,
+        "panel": panel,
+        "violations": violations,
+        "incomplete": incomplete,
+        "pages_analyzed": pages_analyzed,
+        "pages_attempted": pages_attempted,
+        "engine_version": engine or AXE_CORE_VERSION,
+        "tags": tags,
+        "failures": failures,
+        "checks_passed": checks_passed,
+        "standards": standards,
+    }
+
+
+def html_from(data):
+    """The standalone accessibility page for one `collect_site` result."""
     return build_accessibility_html(
-        site_url, panel, violations, incomplete,
-        pages_analyzed=pages_analyzed, pages_attempted=pages_attempted,
-        engine_version=engine or AXE_CORE_VERSION, tags=tags,
-        failures=failures, checks_passed=checks_passed)
+        data.get("site_url", ""), data.get("panel") or [],
+        data.get("violations") or [], data.get("incomplete") or [],
+        pages_analyzed=data.get("pages_analyzed", 0),
+        pages_attempted=data.get("pages_attempted", 0),
+        engine_version=data.get("engine_version") or AXE_CORE_VERSION,
+        tags=data.get("tags"), failures=data.get("failures"),
+        checks_passed=data.get("checks_passed", 0))
+
+
+def scan_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=print):
+    """Run axe over every URL and return the accessibility report HTML."""
+    return html_from(collect_site(site_url, urls, standards=standards,
+                                  concurrency=concurrency, work_dir=work_dir, log=log))
 
 
 # --------------------------------------------------------------------------

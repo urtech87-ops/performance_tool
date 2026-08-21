@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
-Consolidate Unlighthouse output into ONE standalone HTML report.
+Consolidate a scan into ONE standalone HTML report.
+
+This module owns the reading side: it finds whatever the scanners left in a run
+folder and normalizes it into the page list the report is built from. What the
+report says and how it looks live in report_model / report_render; the PDF pass
+lives in report_pdf.
 
 Reads either / both of these, whichever it finds under the folder(s) you pass:
   - ci-result.json          (jsonExpanded export: scores + core metrics per page)
@@ -18,9 +23,7 @@ import argparse
 import html
 import json
 import os
-import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 
 SKIP_MODES = {"notApplicable", "informative", "manual", "error"}
@@ -66,22 +69,22 @@ def metric_display(key, val):
     return f"{num/1000:.1f} s" if num >= 1000 else f"{int(num)} ms"
 
 
-def score_class(s):
-    if s is None:
-        return "na"
-    if s >= 0.9:
-        return "good"
-    if s >= 0.5:
-        return "avg"
-    return "poor"
+def category_of_audits(categories):
+    """audit id -> the Lighthouse category that lists it.
 
-
-def fmt_score(s):
-    return "-" if s is None else str(round(s * 100))
-
-
-def anchor_for(page):
-    return f'page-{abs(hash((page["path"], page["device"])))}'
+    The LHR already states this in each category's auditRefs; carrying it
+    through is what lets the report group findings by category instead of
+    presenting one flat list. It reads the scan output - it does not change
+    any of it."""
+    out = {}
+    for key, _ in CATEGORY_KEYS:
+        cat = categories.get(key)
+        if not isinstance(cat, dict):
+            continue
+        for ref in cat.get("auditRefs") or []:
+            if isinstance(ref, dict) and ref.get("id"):
+                out.setdefault(ref["id"], key)
+    return out
 
 
 def load_ci_results(roots):
@@ -144,8 +147,9 @@ def load_lhr_pages(roots):
                     url = data[k]
                     break
             scores = {k: get_score(data["categories"].get(k)) for k, _ in CATEGORY_KEYS}
+            audit_category = category_of_audits(data["categories"])
             issues = []
-            for audit in data["audits"].values():
+            for audit_id, audit in data["audits"].items():
                 if not isinstance(audit, dict):
                     continue
                 if audit.get("scoreDisplayMode") in SKIP_MODES:
@@ -154,6 +158,8 @@ def load_lhr_pages(roots):
                 if s is None or s >= 1:
                     continue
                 issues.append({
+                    "id": audit.get("id", audit_id),
+                    "category": audit_category.get(audit.get("id", audit_id), ""),
                     "title": audit.get("title", audit.get("id", "audit")),
                     "description": audit.get("description", ""),
                     "displayValue": audit.get("displayValue", ""),
@@ -215,184 +221,103 @@ def merge(ci_pages, lhr_pages):
     return result
 
 
-def build_html(pages, roots, out_path=None, categories=None):
-    gen = datetime.now().strftime("%Y-%m-%d %H:%M")
-    total = len(pages)
-    has_any_issue_data = any(p["issues"] is not None for p in pages)
-    total_issues = sum(len(p["issues"]) for p in pages if p["issues"])
+def build_html(pages, roots, out_path=None, categories=None, *,
+               site_url="", device="", accessibility=None, security=None,
+               brand=None, scope=None, tools=None, standards=None, generated=None):
+    """The consolidated report as one standalone HTML document.
+
+    Signature and behaviour for the original four arguments are unchanged, so
+    every existing caller keeps working. The keyword arguments are what the
+    dashboard adds when a run also produced accessibility-standards or security
+    findings: with them, one report covers every category instead of three
+    separate pages.
+
+    The rendering itself lives in report_model (what the report says) and
+    report_render (how it looks). Nothing here re-scores anything - the pages
+    handed in are the scanners' own output.
+    """
+    import report_model
+    import report_render
+    from report_brand import load_brand
+
     out_dir = Path(out_path).parent if out_path else Path(".")
 
-    # Which category columns/chips to show. None -> all four (unchanged default).
-    cat_keys = [(k, l) for (k, l) in CATEGORY_KEYS if categories is None or k in categories]
-    show_metrics = categories is None or "performance" in categories
-
-    def report_href(p):
-        rh = p.get("report_html")
-        if not rh:
+    def report_href(page):
+        """Keep the existing link to each page's full Lighthouse report,
+        relative to wherever this HTML is being written."""
+        raw = page.get("report_html")
+        if not raw:
             return None
         try:
-            return os.path.relpath(rh, out_dir).replace("\\", "/")
-        except Exception:
+            return os.path.relpath(raw, out_dir).replace("\\", "/")
+        except ValueError:
             return None
 
-    rows = []
-    for p in pages:
-        cells = "".join(
-            f'<td class="sc {score_class(p["scores"].get(k))}">{fmt_score(p["scores"].get(k))}</td>'
-            for k, _ in cat_keys)
-        dev = f'<span class="dev">{html.escape(p["device"])}</span>' if p["device"] else ""
-        issue_cell = (str(len(p["issues"])) if p["issues"] is not None else "-")
-        href = report_href(p)
-        rep_cell = f'<a class="rep" href="{href}" target="_blank">Open &#8599;</a>' if href else "-"
-        rows.append(
-            f'<tr><td class="url"><a href="#{anchor_for(p)}">{html.escape(p["path"])}</a> {dev}</td>'
-            f'{cells}<td class="ic">{issue_cell}</td><td class="rc">{rep_cell}</td></tr>')
-    summary_rows = "\n".join(rows)
+    resolved = load_brand(brand, near=out_dir)
 
-    sections = []
-    for p in pages:
-        dev = f' <span class="dev">{html.escape(p["device"])}</span>' if p["device"] else ""
-        chips = "".join(
-            f'<span class="chip {score_class(p["scores"].get(k))}">{lbl}: {fmt_score(p["scores"].get(k))}</span>'
-            for k, lbl in cat_keys)
+    if not site_url:
+        for page in pages:
+            if "://" in str(page.get("path", "")):
+                from urllib.parse import urlparse as _u
+                parsed = _u(page["path"])
+                site_url = f"{parsed.scheme}://{parsed.netloc}"
+                break
+    if not device:
+        device = next((p.get("device") for p in pages if p.get("device")), "")
 
-        href = report_href(p)
-        report_link = (f'<a class="fullrep" href="{href}" target="_blank">Open full Lighthouse report &#8599;</a>'
-                       if href else "")
+    report = report_model.build_report(
+        pages,
+        site_url=site_url,
+        device=device,
+        roots=roots,
+        categories=categories,
+        accessibility=accessibility,
+        security=security,
+        brand=resolved.as_dict(),
+        generated=generated,
+        scope=scope,
+        tools=tools or default_tools(pages, accessibility, security),
+        standards=standards,
+        report_href=report_href,
+    )
+    return report_render.render_report(report, resolved)
 
-        metric_html = ""
-        if show_metrics and p["metrics"]:
-            cells = "".join(
-                f'<div class="m {score_class(m["score"])}"><span>{METRIC_LABELS.get(mk, mk)}</span><b>{html.escape(m["display"])}</b></div>'
-                for mk, m in p["metrics"].items())
-            metric_html = f'<div class="metrics">{cells}</div>'
 
-        if p["issues"]:
-            lis = []
-            for i in p["issues"]:
-                dv = f'<span class="dv">{html.escape(i["displayValue"])}</span>' if i["displayValue"] else ""
-                desc = html.escape(i["description"]).replace("\n", " ")
-                lis.append(f'<li><div class="it">{html.escape(i["title"])} {dv}</div><div class="id">{desc}</div></li>')
-            issue_html = f'<ul class="issues">{"".join(lis)}</ul>'
-        elif p["issues"] == []:
-            issue_html = '<p class="clean">No failing audits on this page.</p>'
-        else:
-            issue_html = '<p class="note">Full audit not run for this page. Increase "Max pages" to include it in the deep audit.</p>'
-
-        sections.append(
-            f'<section id="{anchor_for(p)}"><h3>{html.escape(p["path"])}{dev} {report_link}</h3>'
-            f'<div class="chips">{chips}</div>{metric_html}{issue_html}</section>')
-    section_html = "\n".join(sections)
-
-    header_cells = "".join(f"<th>{lbl}</th>" for _, lbl in cat_keys)
-    scanned = ", ".join(str(Path(p)) for p in roots)
-    issue_stat = (f'<div class="stat"><b>{total_issues}</b><span>Issues found</span></div>'
-                  if has_any_issue_data else "")
-
-    return f"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Danah - Consolidated Performance Report</title>
-<style>
-  :root {{ --good:#0a7d34; --avg:#b06f00; --poor:#c0392b; --na:#999; --bg:#f6f7f9; --card:#fff; --line:#e3e6ea; --ink:#1c2430; }}
-  * {{ box-sizing:border-box; }}
-  body {{ font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; background:var(--bg); color:var(--ink); line-height:1.5; }}
-  .wrap {{ max-width:1040px; margin:0 auto; padding:32px 20px 64px; }}
-  h1 {{ font-size:24px; margin:0 0 4px; }}
-  .meta {{ color:#5b6672; font-size:13px; margin-bottom:22px; }}
-  .stats {{ display:flex; gap:16px; margin-bottom:28px; flex-wrap:wrap; }}
-  .stat {{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; min-width:120px; }}
-  .stat b {{ display:block; font-size:26px; }}
-  .stat span {{ font-size:12px; color:#5b6672; text-transform:uppercase; letter-spacing:.04em; }}
-  table {{ width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; }}
-  th, td {{ padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); font-size:14px; }}
-  th {{ background:#eef1f4; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:#5b6672; }}
-  td.sc, th:nth-child(n+2) {{ text-align:center; }}
-  td.ic {{ text-align:center; font-weight:600; }}
-  .sc {{ font-weight:700; }}
-  .good {{ color:var(--good); }} .avg {{ color:var(--avg); }} .poor {{ color:var(--poor); }} .na {{ color:var(--na); }}
-  .url a {{ color:#0a58ca; text-decoration:none; word-break:break-all; }}
-  .dev {{ font-size:11px; background:#eef1f4; color:#5b6672; padding:1px 7px; border-radius:20px; }}
-  h2 {{ margin:40px 0 8px; font-size:18px; }}
-  section {{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin:16px 0; }}
-  section h3 {{ margin:0 0 12px; font-size:15px; word-break:break-all; }}
-  .chips {{ margin-bottom:14px; display:flex; gap:8px; flex-wrap:wrap; }}
-  .chip {{ font-size:12px; padding:3px 10px; border-radius:20px; border:1px solid var(--line); font-weight:600; }}
-  .chip.good {{ background:#e7f4ec; }} .chip.avg {{ background:#fbf1de; }} .chip.poor {{ background:#fbe9e7; }} .chip.na {{ background:#f0f0f0; }}
-  .metrics {{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }}
-  .m {{ border:1px solid var(--line); border-radius:8px; padding:8px 12px; min-width:96px; }}
-  .m span {{ display:block; font-size:11px; color:#5b6672; text-transform:uppercase; }}
-  .m b {{ font-size:15px; }}
-  .m.good b {{ color:var(--good); }} .m.avg b {{ color:var(--avg); }} .m.poor b {{ color:var(--poor); }}
-  ul.issues {{ list-style:none; margin:0; padding:0; }}
-  ul.issues li {{ padding:10px 0; border-top:1px solid var(--line); }}
-  .it {{ font-weight:600; font-size:14px; }}
-  .dv {{ font-weight:600; color:var(--poor); margin-left:8px; }}
-  .id {{ font-size:13px; color:#5b6672; margin-top:2px; }}
-  .clean {{ color:var(--good); font-size:14px; margin:0; }}
-  .note {{ color:#8a6d00; background:#fbf6e6; border:1px solid #efe1b0; padding:8px 12px; border-radius:8px; font-size:13px; margin:0; }}
-  td.rc {{ text-align:center; }}
-  a.rep {{ color:#0a58ca; text-decoration:none; font-size:13px; font-weight:600; white-space:nowrap; }}
-  a.fullrep {{ float:right; font-size:12px; font-weight:600; color:#fff; background:#3887BE; padding:4px 10px; border-radius:6px; text-decoration:none; }}
-  @media print {{ body {{ background:#fff; }} section, table {{ break-inside:avoid; }} .wrap {{ max-width:none; }} }}
-</style></head>
-<body><div class="wrap">
-  <h1>Danah - Consolidated Performance Report</h1>
-  <div class="meta">Generated {gen} - Source: {html.escape(scanned)}</div>
-  <div class="stats">
-    <div class="stat"><b>{total}</b><span>Pages</span></div>
-    {issue_stat}
-  </div>
-  <h2>Summary - all pages</h2>
-  <table>
-    <thead><tr><th>Page</th>{header_cells}<th>Issues</th><th>Report</th></tr></thead>
-    <tbody>{summary_rows}</tbody>
-  </table>
-  <p class="meta" style="margin-top:10px">Scores 0-100.
-    <span class="good">&ge;90 good</span> - <span class="avg">50-89 needs work</span> - <span class="poor">&lt;50 poor</span>.</p>
-  <h2>Detail by page</h2>
-  {section_html}
-</div></body></html>"""
+def default_tools(pages, accessibility=None, security=None):
+    """What ran, for the methodology page. Versions are only claimed where a
+    scanner actually reported one."""
+    tools = [
+        {"name": "Unlighthouse", "version": "", "role": "site crawl and page discovery"},
+        {"name": "Google Lighthouse", "version": "", "role": "per-page category audits"},
+    ]
+    if accessibility:
+        tools.append({"name": "axe-core",
+                      "version": accessibility.get("engine_version", ""),
+                      "role": "accessibility rules and standards mapping"})
+    if security:
+        tools.append({"name": "Passive security scan", "version": "1.0",
+                      "role": "headers, cookies, TLS and redirects"})
+    tools.append({"name": "paged.js", "version": "", "role": "PDF pagination"})
+    return tools
 
 
 def find_chrome():
-    """Locate a Chromium-based browser for headless PDF printing."""
-    import shutil
-    la = os.environ.get("LOCALAPPDATA", "")
-    pf = os.environ.get("PROGRAMFILES", r"C:\Program Files")
-    pf86 = os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")
-    candidates = [
-        rf"{pf}\Google\Chrome\Application\chrome.exe",
-        rf"{pf86}\Google\Chrome\Application\chrome.exe",
-        rf"{la}\Google\Chrome\Application\chrome.exe",
-        rf"{pf}\Microsoft\Edge\Application\msedge.exe",
-        rf"{pf86}\Microsoft\Edge\Application\msedge.exe",
-        rf"{pf}\BraveSoftware\Brave-Browser\Application\brave.exe",
-        rf"{pf86}\BraveSoftware\Brave-Browser\Application\brave.exe",
-        "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser",
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    ]
-    for c in candidates:
-        if c and os.path.exists(c):
-            return c
-    for name in ("chrome", "google-chrome", "chromium", "chromium-browser", "msedge", "brave"):
-        p = shutil.which(name)
-        if p:
-            return p
-    return None
+    """Kept for callers that used to locate the browser through this module;
+    the search itself lives in report_pdf now."""
+    import report_pdf
+    return report_pdf.find_chrome()
 
 
-def html_to_pdf(html_path, pdf_path):
-    chrome = find_chrome()
-    if not chrome:
-        raise RuntimeError("No Chrome/Edge/Brave found for PDF export. Install one, or skip --pdf.")
-    file_url = "file:///" + os.path.abspath(html_path).replace("\\", "/")
-    subprocess.run(
-        [chrome, "--headless=new", "--disable-gpu", "--no-pdf-header-footer",
-         f"--print-to-pdf={os.path.abspath(pdf_path)}", file_url],
-        check=True, timeout=180,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
+def html_to_pdf(html_path, pdf_path, log=None):
+    """Render the report to PDF.
+
+    Delegates to report_pdf, which paginates with paged.js so the PDF gets the
+    cover sheet, running header, page numbers and break control the plain
+    "print to PDF" could not produce. Falls back to Chrome's own pagination
+    when the paged.js polyfill cannot be resolved.
+    """
+    import report_pdf
+    return report_pdf.html_to_pdf(html_path, pdf_path, log=log)
 
 
 def main():
@@ -400,6 +325,9 @@ def main():
     ap.add_argument("roots", nargs="*", default=["."])
     ap.add_argument("-o", "--output", default="consolidated-report.html")
     ap.add_argument("--pdf", action="store_true", help="Also write a PDF next to the HTML")
+    ap.add_argument("--brand", default="",
+                    help="brand.json to white-label the report with "
+                         "(default: brand.json next to the output, then next to this file)")
     args = ap.parse_args()
     roots = args.roots if args.roots else ["."]
 
@@ -413,7 +341,9 @@ def main():
               "Point this at your .unlighthouse folder.", file=sys.stderr)
         sys.exit(1)
 
-    Path(args.output).write_text(build_html(pages, roots, out_path=args.output), encoding="utf-8")
+    Path(args.output).write_text(
+        build_html(pages, roots, out_path=args.output, brand=args.brand or None),
+        encoding="utf-8")
     src = []
     if ci_pages:
         src.append("ci-result.json")
@@ -424,8 +354,8 @@ def main():
     if args.pdf:
         pdf_path = str(Path(args.output).with_suffix(".pdf"))
         try:
-            html_to_pdf(args.output, pdf_path)
-            print(f"PDF: {pdf_path}")
+            info = html_to_pdf(args.output, pdf_path, log=lambda m: print(m, file=sys.stderr))
+            print(f"PDF: {pdf_path} (paginated by {info['engine']})")
         except Exception as e:
             print(f"PDF export failed: {e}", file=sys.stderr)
 

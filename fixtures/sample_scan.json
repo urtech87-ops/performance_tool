@@ -1,0 +1,294 @@
+{
+  "_comment": "A fabricated but structurally faithful scan of a mid-sized site. Shapes match exactly what the three scanners produce: pages[] as consolidate_report.merge() returns them, accessibility as accessibility_scan.collect_site() returns it, security as security_scan.collect_site() returns it. Edit this to iterate on the report layout without running a scan.",
+  "meta": {
+    "site_url": "https://www.harborlane.example",
+    "device": "desktop",
+    "generated": "2026-08-21T10:24:00",
+    "standards": ["wcag21aa", "section508", "en301549", "ada", "atag20"],
+    "categories": ["performance", "accessibility", "best-practices", "seo"],
+    "scope": {"pages_crawled": 31, "pages_deep_audited": 8, "samples": 1, "max_pages": 30},
+    "tools": [
+      {"name": "Unlighthouse", "version": "0.16.3", "role": "site crawl and scoring"},
+      {"name": "Google Lighthouse", "version": "12.2.1", "role": "per-page audits"},
+      {"name": "axe-core", "version": "4.13.0", "role": "accessibility rules"},
+      {"name": "Passive security scan", "version": "1.0", "role": "headers, cookies, TLS"}
+    ]
+  },
+  "pages": [
+    {
+      "path": "https://www.harborlane.example/",
+      "device": "Desktop",
+      "scores": {"performance": 0.41, "accessibility": 0.78, "best-practices": 0.74, "seo": 0.91},
+      "metrics": {
+        "first-contentful-paint": {"display": "2.4 s", "score": 0.61},
+        "largest-contentful-paint": {"display": "5.8 s", "score": 0.19},
+        "total-blocking-time": {"display": "740 ms", "score": 0.28},
+        "cumulative-layout-shift": {"display": "0.212", "score": 0.34},
+        "speed-index": {"display": "4.1 s", "score": 0.52}
+      },
+      "report_html": "lhr/page_001.report.html",
+      "issues": [
+        {"id": "largest-contentful-paint", "category": "performance", "title": "Largest Contentful Paint", "description": "The hero image is the largest element and loads late.", "displayValue": "5.8 s", "score": 0.19},
+        {"id": "unused-javascript", "category": "performance", "title": "Reduce unused JavaScript", "description": "Remove JavaScript that is never executed on this page, and defer what is not needed for the first paint.", "displayValue": "Potential savings of 512 KiB", "score": 0.12},
+        {"id": "modern-image-formats", "category": "performance", "title": "Serve images in next-gen formats", "description": "Formats like WebP and AVIF compress far better than PNG or JPEG.", "displayValue": "Potential savings of 890 KiB", "score": 0.24},
+        {"id": "render-blocking-resources", "category": "performance", "title": "Eliminate render-blocking resources", "description": "Stylesheets and scripts in the head delay the first paint.", "displayValue": "Potential savings of 1,240 ms", "score": 0.36},
+        {"id": "uses-text-compression", "category": "performance", "title": "Enable text compression", "description": "Text-based responses should be served with gzip or brotli compression.", "displayValue": "Potential savings of 310 KiB", "score": 0.0},
+        {"id": "color-contrast", "category": "accessibility", "title": "Background and foreground colors do not have a sufficient contrast ratio", "description": "Low-contrast text is difficult or impossible for many users to read.", "displayValue": "", "score": 0.0},
+        {"id": "image-alt", "category": "accessibility", "title": "Image elements do not have [alt] attributes", "description": "Informative elements should aim for short, descriptive alternate text.", "displayValue": "", "score": 0.0},
+        {"id": "errors-in-console", "category": "best-practices", "title": "Browser errors were logged to the console", "description": "Errors logged to the console indicate unresolved problems.", "displayValue": "", "score": 0.0},
+        {"id": "no-vulnerable-libraries", "category": "best-practices", "title": "Includes front-end JavaScript libraries with known security vulnerabilities", "description": "Some third-party scripts contain known vulnerabilities.", "displayValue": "3 vulnerabilities detected", "score": 0.0},
+        {"id": "meta-description", "category": "seo", "title": "Document does not have a meta description", "description": "Meta descriptions may be included in search results to concisely summarize page content.", "displayValue": "", "score": 0.0}
+      ]
+    },
+    {
+      "path": "https://www.harborlane.example/collections/outerwear",
+      "device": "Desktop",
+      "scores": {"performance": 0.36, "accessibility": 0.81, "best-practices": 0.74, "seo": 0.83},
+      "metrics": {
+        "first-contentful-paint": {"display": "2.9 s", "score": 0.48},
+        "largest-contentful-paint": {"display": "6.4 s", "score": 0.12},
+        "total-blocking-time": {"display": "980 ms", "score": 0.16},
+        "cumulative-layout-shift": {"display": "0.185", "score": 0.41}
+      },
+      "report_html": "lhr/page_002.report.html",
+      "issues": [
+        {"id": "unused-javascript", "category": "performance", "title": "Reduce unused JavaScript", "description": "Remove JavaScript that is never executed on this page, and defer what is not needed for the first paint.", "displayValue": "Potential savings of 640 KiB", "score": 0.08},
+        {"id": "modern-image-formats", "category": "performance", "title": "Serve images in next-gen formats", "description": "Formats like WebP and AVIF compress far better than PNG or JPEG.", "displayValue": "Potential savings of 2,100 KiB", "score": 0.11},
+        {"id": "uses-responsive-images", "category": "performance", "title": "Properly size images", "description": "Serve images that are appropriately sized to save mobile data and improve load time.", "displayValue": "Potential savings of 1,480 KiB", "score": 0.22},
+        {"id": "uses-text-compression", "category": "performance", "title": "Enable text compression", "description": "Text-based responses should be served with gzip or brotli compression.", "displayValue": "Potential savings of 290 KiB", "score": 0.0},
+        {"id": "color-contrast", "category": "accessibility", "title": "Background and foreground colors do not have a sufficient contrast ratio", "description": "Low-contrast text is difficult or impossible for many users to read.", "displayValue": "", "score": 0.0},
+        {"id": "errors-in-console", "category": "best-practices", "title": "Browser errors were logged to the console", "description": "Errors logged to the console indicate unresolved problems.", "displayValue": "", "score": 0.0},
+        {"id": "link-text", "category": "seo", "title": "Links do not have descriptive text", "description": "Descriptive link text helps search engines understand your content.", "displayValue": "6 links found", "score": 0.0}
+      ]
+    },
+    {
+      "path": "https://www.harborlane.example/products/harbor-parka",
+      "device": "Desktop",
+      "scores": {"performance": 0.52, "accessibility": 0.86, "best-practices": 0.83, "seo": 0.92},
+      "metrics": {
+        "first-contentful-paint": {"display": "2.1 s", "score": 0.71},
+        "largest-contentful-paint": {"display": "4.2 s", "score": 0.38},
+        "total-blocking-time": {"display": "410 ms", "score": 0.52},
+        "cumulative-layout-shift": {"display": "0.041", "score": 0.96}
+      },
+      "report_html": "lhr/page_003.report.html",
+      "issues": [
+        {"id": "unused-javascript", "category": "performance", "title": "Reduce unused JavaScript", "description": "Remove JavaScript that is never executed on this page, and defer what is not needed for the first paint.", "displayValue": "Potential savings of 380 KiB", "score": 0.31},
+        {"id": "uses-responsive-images", "category": "performance", "title": "Properly size images", "description": "Serve images that are appropriately sized to save mobile data and improve load time.", "displayValue": "Potential savings of 620 KiB", "score": 0.44},
+        {"id": "color-contrast", "category": "accessibility", "title": "Background and foreground colors do not have a sufficient contrast ratio", "description": "Low-contrast text is difficult or impossible for many users to read.", "displayValue": "", "score": 0.0}
+      ]
+    },
+    {
+      "path": "https://www.harborlane.example/about",
+      "device": "Desktop",
+      "scores": {"performance": 0.74, "accessibility": 0.92, "best-practices": 0.92, "seo": 1.0},
+      "metrics": {
+        "first-contentful-paint": {"display": "1.4 s", "score": 0.92},
+        "largest-contentful-paint": {"display": "2.6 s", "score": 0.78},
+        "total-blocking-time": {"display": "120 ms", "score": 0.94},
+        "cumulative-layout-shift": {"display": "0.008", "score": 1.0}
+      },
+      "report_html": "lhr/page_004.report.html",
+      "issues": [
+        {"id": "uses-long-cache-ttl", "category": "performance", "title": "Serve static assets with an efficient cache policy", "description": "A long cache lifetime speeds up repeat visits.", "displayValue": "14 resources found", "score": 0.55}
+      ]
+    },
+    {
+      "path": "https://www.harborlane.example/contact",
+      "device": "Desktop",
+      "scores": {"performance": 0.68, "accessibility": 0.74, "best-practices": 0.92, "seo": 0.92},
+      "metrics": {
+        "first-contentful-paint": {"display": "1.6 s", "score": 0.88},
+        "largest-contentful-paint": {"display": "3.1 s", "score": 0.62},
+        "total-blocking-time": {"display": "230 ms", "score": 0.78},
+        "cumulative-layout-shift": {"display": "0.019", "score": 0.99}
+      },
+      "report_html": "lhr/page_005.report.html",
+      "issues": [
+        {"id": "label", "category": "accessibility", "title": "Form elements do not have associated labels", "description": "Labels ensure that form controls are announced properly by assistive technologies.", "displayValue": "", "score": 0.0},
+        {"id": "color-contrast", "category": "accessibility", "title": "Background and foreground colors do not have a sufficient contrast ratio", "description": "Low-contrast text is difficult or impossible for many users to read.", "displayValue": "", "score": 0.0},
+        {"id": "uses-long-cache-ttl", "category": "performance", "title": "Serve static assets with an efficient cache policy", "description": "A long cache lifetime speeds up repeat visits.", "displayValue": "9 resources found", "score": 0.55}
+      ]
+    },
+    {
+      "path": "https://www.harborlane.example/journal/spring-lookbook",
+      "device": "Desktop",
+      "scores": {"performance": 0.58, "accessibility": 0.83, "best-practices": 0.83, "seo": 0.83},
+      "metrics": {
+        "first-contentful-paint": {"display": "2.0 s", "score": 0.74},
+        "largest-contentful-paint": {"display": "3.9 s", "score": 0.45},
+        "total-blocking-time": {"display": "360 ms", "score": 0.58},
+        "cumulative-layout-shift": {"display": "0.096", "score": 0.72}
+      },
+      "report_html": "lhr/page_006.report.html",
+      "issues": [
+        {"id": "modern-image-formats", "category": "performance", "title": "Serve images in next-gen formats", "description": "Formats like WebP and AVIF compress far better than PNG or JPEG.", "displayValue": "Potential savings of 1,340 KiB", "score": 0.28},
+        {"id": "heading-order", "category": "accessibility", "title": "Heading elements are not in a sequentially-descending order", "description": "Properly ordered headings convey the page structure to screen reader users.", "displayValue": "", "score": 0.0},
+        {"id": "meta-description", "category": "seo", "title": "Document does not have a meta description", "description": "Meta descriptions may be included in search results to concisely summarize page content.", "displayValue": "", "score": 0.0}
+      ]
+    },
+    {
+      "path": "https://www.harborlane.example/stores",
+      "device": "Desktop",
+      "scores": {"performance": 0.63, "accessibility": 0.88, "best-practices": 0.92, "seo": 0.92},
+      "metrics": {},
+      "report_html": null,
+      "issues": null
+    },
+    {
+      "path": "https://www.harborlane.example/faq",
+      "device": "Desktop",
+      "scores": {"performance": 0.71, "accessibility": 0.9, "best-practices": 0.92, "seo": 1.0},
+      "metrics": {},
+      "report_html": null,
+      "issues": null
+    }
+  ],
+  "accessibility": {
+    "pages_analyzed": 6,
+    "pages_attempted": 6,
+    "checks_passed": 412,
+    "engine_version": "4.13.0",
+    "violations": [
+      {
+        "id": "color-contrast", "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "description": "Ensures the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast",
+        "tags": ["cat.color", "wcag2aa", "wcag143", "EN-301-549", "EN-9.1.4.3"],
+        "sc": ["1.4.3"], "nodes": 34,
+        "pages": {
+          "https://www.harborlane.example/": [
+            {"target": ".promo-bar > p", "html": "<p style=\"color:#9aa4b2;background:#f2f4f7\">Free shipping over 75</p>"},
+            {"target": "footer .legal a", "html": "<a class=\"legal\" href=\"/terms\">Terms</a>"}
+          ],
+          "https://www.harborlane.example/collections/outerwear": [
+            {"target": ".price--sale", "html": "<span class=\"price--sale\">was 189</span>"}
+          ],
+          "https://www.harborlane.example/contact": [
+            {"target": "form .hint", "html": "<span class=\"hint\">We reply within 2 days</span>"}
+          ]
+        }
+      },
+      {
+        "id": "image-alt", "impact": "critical",
+        "help": "Images must have alternate text",
+        "description": "Ensures <img> elements have alternate text or a role of none or presentation",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/image-alt",
+        "tags": ["cat.text-alternatives", "wcag2a", "wcag111", "section508", "section508.22.a", "EN-301-549"],
+        "sc": ["1.1.1"], "nodes": 11,
+        "pages": {
+          "https://www.harborlane.example/": [
+            {"target": ".hero img", "html": "<img src=\"/hero-spring.jpg\">"}
+          ],
+          "https://www.harborlane.example/collections/outerwear": [
+            {"target": ".card:nth-child(3) img", "html": "<img src=\"/p/parka-2.jpg\">"}
+          ],
+          "https://www.harborlane.example/journal/spring-lookbook": [
+            {"target": "article img:nth-of-type(2)", "html": "<img src=\"/journal/look-2.jpg\">"}
+          ]
+        }
+      },
+      {
+        "id": "label", "impact": "critical",
+        "help": "Form elements must have labels",
+        "description": "Ensures every form element has a label",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/label",
+        "tags": ["cat.forms", "wcag2a", "wcag412", "wcag131", "section508", "EN-301-549"],
+        "sc": ["1.3.1", "4.1.2"], "nodes": 3,
+        "pages": {
+          "https://www.harborlane.example/contact": [
+            {"target": "#newsletter-email", "html": "<input id=\"newsletter-email\" type=\"email\" placeholder=\"Email\">"}
+          ]
+        }
+      },
+      {
+        "id": "target-size", "impact": "serious",
+        "help": "All touch targets must be 24px large, or leave sufficient space",
+        "description": "Ensures touch targets have sufficient size and space",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/target-size",
+        "tags": ["cat.sensory-and-visual-cues", "wcag22aa", "wcag258"],
+        "sc": ["2.5.8"], "nodes": 18,
+        "pages": {
+          "https://www.harborlane.example/": [
+            {"target": ".social a", "html": "<a class=\"social\" href=\"#\"><svg></svg></a>"}
+          ],
+          "https://www.harborlane.example/collections/outerwear": [
+            {"target": ".filter-chip", "html": "<button class=\"filter-chip\">S</button>"}
+          ]
+        }
+      },
+      {
+        "id": "heading-order", "impact": "moderate",
+        "help": "Heading levels should only increase by one",
+        "description": "Ensures the order of headings is semantically correct",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/heading-order",
+        "tags": ["cat.semantics", "best-practice", "wcag131"],
+        "sc": ["1.3.1"], "nodes": 5,
+        "pages": {
+          "https://www.harborlane.example/journal/spring-lookbook": [
+            {"target": "article h4", "html": "<h4>The fabric</h4>"}
+          ]
+        }
+      },
+      {
+        "id": "region", "impact": "minor",
+        "help": "All page content should be contained by landmarks",
+        "description": "Ensures all page content is contained by landmarks",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/region",
+        "tags": ["cat.keyboard", "best-practice"],
+        "sc": [], "nodes": 6,
+        "pages": {
+          "https://www.harborlane.example/stores": [
+            {"target": ".map-wrap", "html": "<div class=\"map-wrap\"></div>"}
+          ]
+        }
+      }
+    ],
+    "incomplete": [
+      {
+        "id": "color-contrast", "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "description": "Text over a background image could not be evaluated automatically",
+        "helpUrl": "https://dequeuniversity.com/rules/axe/4.13/color-contrast",
+        "tags": ["cat.color", "wcag2aa", "wcag143"], "sc": ["1.4.3"], "nodes": 4,
+        "pages": {"https://www.harborlane.example/": [{"target": ".hero h1", "html": "<h1>Built for the coast</h1>"}]}
+      }
+    ],
+    "panel": [
+      {"id": "wcag21aa", "name": "WCAG 2.1 Level AA", "region": "International", "basis": "WCAG 2.1 Levels A + AA", "verdict": "fail", "rules": 3, "elements": 48, "pages": 5, "rule_ids": ["color-contrast", "image-alt", "label"], "note": ""},
+      {"id": "section508", "name": "Section 508 (Revised)", "region": "United States", "basis": "WCAG 2.0 Level AA (+ Section 508 specific rules)", "verdict": "fail", "rules": 3, "elements": 48, "pages": 5, "rule_ids": ["color-contrast", "image-alt", "label"], "note": ""},
+      {"id": "en301549", "name": "EN 301 549", "region": "European Union", "basis": "WCAG 2.1 Level AA (+ EN 301 549 specific rules)", "verdict": "fail", "rules": 3, "elements": 48, "pages": 5, "rule_ids": ["color-contrast", "image-alt", "label"], "note": ""},
+      {"id": "ada", "name": "ADA Title III", "region": "United States", "basis": "WCAG 2.1 Level AA (DOJ-referenced benchmark)", "verdict": "fail", "rules": 3, "elements": 48, "pages": 5, "rule_ids": ["color-contrast", "image-alt", "label"], "note": ""},
+      {"id": "atag20", "name": "ATAG 2.0", "region": "International", "basis": "Authoring-tool guideline - not testable against a rendered page", "verdict": "n/a", "rules": 0, "elements": 0, "pages": 0, "rule_ids": [], "note": "ATAG 2.0 governs authoring tools (how content is produced), not the delivered page, so no page-level automated check applies."}
+    ],
+    "failures": []
+  },
+  "security": {
+    "site_url": "https://www.harborlane.example",
+    "scanned": 8,
+    "total": 8,
+    "cert_note": "Certificate valid, expires in 41 day(s).",
+    "hits": {
+      "hsts": ["__site__"],
+      "csp": [
+        "https://www.harborlane.example/",
+        "https://www.harborlane.example/collections/outerwear",
+        "https://www.harborlane.example/products/harbor-parka",
+        "https://www.harborlane.example/about",
+        "https://www.harborlane.example/contact"
+      ],
+      "xfo": ["https://www.harborlane.example/", "https://www.harborlane.example/contact"],
+      "nosniff": ["https://www.harborlane.example/"],
+      "referrer": ["https://www.harborlane.example/", "https://www.harborlane.example/about"],
+      "cookie_secure": ["https://www.harborlane.example/", "https://www.harborlane.example/contact"],
+      "cookie_httponly": ["https://www.harborlane.example/"],
+      "cookie_samesite": ["https://www.harborlane.example/"],
+      "mixed_content": ["https://www.harborlane.example/journal/spring-lookbook"],
+      "server_banner": ["https://www.harborlane.example/"],
+      "powered_by": ["https://www.harborlane.example/"],
+      "cert_expiring": ["__site__"],
+      "no_securitytxt": ["__site__"]
+    }
+  }
+}
