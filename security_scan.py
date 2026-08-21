@@ -208,8 +208,12 @@ def check_securitytxt(host, timeout=12):
     return True  # missing
 
 
-def scan_site(site_url, urls, log=print):
-    """Fetch each URL, run all checks, and return the security report HTML."""
+def collect_site(site_url, urls, log=print):
+    """Fetch each URL, run all checks, and return the findings as data.
+
+    Identical work to what `scan_site` has always done; it stops one step
+    earlier so the consolidated report can render the same findings. Nothing
+    about the checks themselves changed."""
     host = urlparse(site_url).netloc
     # rule_id -> set of affected page urls (for per-page rules) or {"__site__"}
     hits = {}
@@ -239,7 +243,20 @@ def scan_site(site_url, urls, log=print):
     if check_securitytxt(host):
         add("no_securitytxt", "__site__")
 
-    return build_security_html(site_url, hits, scanned, len(urls), cert_note)
+    return {"site_url": site_url, "hits": hits, "scanned": scanned,
+            "total": len(urls), "cert_note": cert_note}
+
+
+def html_from(data):
+    """The standalone security page for one `collect_site` result."""
+    return build_security_html(data.get("site_url", ""), data.get("hits") or {},
+                               data.get("scanned", 0), data.get("total", 0),
+                               data.get("cert_note", ""))
+
+
+def scan_site(site_url, urls, log=print):
+    """Fetch each URL, run all checks, and return the security report HTML."""
+    return html_from(collect_site(site_url, urls, log=log))
 
 
 def _sev_class(sev):

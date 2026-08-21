@@ -79,15 +79,23 @@ def procs(monkeypatch):
 
 @pytest.fixture
 def fake_security(monkeypatch):
-    """The security scan does live HTTP - stub it, as the existing tests do."""
+    """The security scan does live HTTP - stub it, as the existing tests do.
+
+    The pipeline now collects the findings as data (so the consolidated report
+    can include them) and renders the standalone page from that same data, so
+    both halves are stubbed.
+    """
     import security_scan
     calls = []
 
-    def fake_scan_site(site_url, urls, log=print):
+    def fake_collect_site(site_url, urls, log=print):
         calls.append(list(urls))
-        return "<html><body>stub security report</body></html>"
+        return {"site_url": site_url, "hits": {}, "scanned": len(urls),
+                "total": len(urls), "cert_note": ""}
 
-    monkeypatch.setattr(security_scan, "scan_site", fake_scan_site)
+    monkeypatch.setattr(security_scan, "collect_site", fake_collect_site)
+    monkeypatch.setattr(security_scan, "html_from",
+                        lambda data: "<html><body>stub security report</body></html>")
     return calls
 
 
@@ -98,10 +106,12 @@ def perf_report(monkeypatch):
                         lambda roots: [{"path": "/", "device": "desktop", "issues": None}])
     monkeypatch.setattr(dashboard.cr, "load_lhr_pages", lambda roots: [])
     monkeypatch.setattr(dashboard.cr, "build_html",
-                        lambda pages, roots, out_path=None, categories=None:
-                        "<html><body>perf report</body></html>")
-    monkeypatch.setattr(dashboard.cr, "html_to_pdf",
-                        lambda html_path, pdf_path: open(pdf_path, "w").write("%PDF-1.4"))
+                        lambda pages, roots, **kw: "<html><body>perf report</body></html>")
+    def fake_pdf(html_path, pdf_path, **kw):
+        Path(pdf_path).write_text("%PDF-1.4", encoding="utf-8")
+        return {"engine": "stub", "polyfill": None}
+
+    monkeypatch.setattr(dashboard.cr, "html_to_pdf", fake_pdf)
 
 
 def pipeline(**over):

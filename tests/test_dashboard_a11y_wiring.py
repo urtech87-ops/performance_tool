@@ -27,16 +27,26 @@ def no_crawl(monkeypatch):
 
 @pytest.fixture
 def captured_scan(monkeypatch):
-    """Record what run_pipeline hands to accessibility_scan.scan_site."""
+    """Record what run_pipeline hands to accessibility_scan.collect_site.
+
+    The pipeline collects the axe results as data (so the consolidated report
+    can include them) and renders the standalone page from that same data, so
+    both halves are stubbed here.
+    """
     calls = []
 
-    def fake_scan_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=print):
+    def fake_collect_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=print):
         calls.append({"site_url": site_url, "urls": list(urls), "standards": standards,
                       "concurrency": concurrency, "work_dir": work_dir})
         log("stub accessibility scan")
-        return "<html><body>stub accessibility report</body></html>"
+        return {"site_url": site_url, "panel": [], "violations": [], "incomplete": [],
+                "pages_analyzed": len(urls), "pages_attempted": len(urls),
+                "engine_version": "4.13.0", "tags": [], "failures": [],
+                "checks_passed": 0, "standards": standards}
 
-    monkeypatch.setattr(a11y, "scan_site", fake_scan_site)
+    monkeypatch.setattr(a11y, "collect_site", fake_collect_site)
+    monkeypatch.setattr(a11y, "html_from",
+                        lambda data: "<html><body>stub accessibility report</body></html>")
     return calls
 
 
@@ -89,7 +99,7 @@ def test_pipeline_falls_back_to_the_entered_url_with_no_routes(runs_dir, no_craw
 def test_a_failing_accessibility_scan_never_breaks_the_run(runs_dir, no_crawl, monkeypatch):
     def boom(*a, **kw):
         raise RuntimeError("axe exploded")
-    monkeypatch.setattr(a11y, "scan_site", boom)
+    monkeypatch.setattr(a11y, "collect_site", boom)
     logged = []
     name = dashboard.run_pipeline("https://x.test", "desktop", 1, False, 30, 3,
                                   False, [], logged.append, a11y=True)
@@ -110,8 +120,11 @@ def test_existing_reports_are_untouched_by_the_new_block(runs_dir, no_crawl, cap
     """Performance + security still behave exactly as before when a11y is on."""
     sec_calls = []
     import security_scan
-    monkeypatch.setattr(security_scan, "scan_site",
-                        lambda site, urls, log=print: sec_calls.append(urls) or "<html>sec</html>")
+    monkeypatch.setattr(security_scan, "collect_site",
+                        lambda site, urls, log=print: sec_calls.append(list(urls)) or
+                        {"site_url": site, "hits": {}, "scanned": len(urls),
+                         "total": len(urls), "cert_note": ""})
+    monkeypatch.setattr(security_scan, "html_from", lambda data: "<html>sec</html>")
     monkeypatch.setattr(dashboard.cr, "load_ci_results", lambda roots: [])
     monkeypatch.setattr(dashboard.cr, "load_lhr_pages", lambda roots: [])
     name = dashboard.run_pipeline("https://x.test", "desktop", 1, False, 30, 3,
