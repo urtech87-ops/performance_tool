@@ -8,3 +8,7 @@ sample-report.html
 sample-report.pdf
 *.print.html
 vendor/pagedjs/*.js
+
+# Local virtualenv and the generated domain-verification secret
+.venv/
+.verify_secret

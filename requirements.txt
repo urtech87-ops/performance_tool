@@ -1,1 +1,4 @@
 flask>=3.0
+gunicorn>=21.2      # production WSGI server (see gunicorn.conf.py)
+rq>=1.15            # scan job queue; >=1.14 for the built-in worker pool
+redis>=5.0          # queue, rate-limit counters, log fan-out

@@ -27,29 +27,35 @@ Requirements on the machine that RUNS this:
     (override with A11Y_RUNNER_HOME), so it needs neither the machine's Chrome
     nor a ChromeDriver matching it
 
-Run:
-    pip install flask
+Run (local, single process - keeps the in-memory queue):
+    pip install -r requirements.txt
     python dashboard.py
     # open http://127.0.0.1:5000
+
+Run (public - Redis queue, worker pool, real web server): see README.md.
 
 Set DASHBOARD_DRYRUN=1 to preview the UI/pipeline without a real scan.
 """
 
 import json
 import os
-import queue
 import re
 import subprocess
 import sys
 import threading
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
-from flask import Flask, Response, request, send_from_directory, abort
+from flask import Flask, Response, jsonify, make_response, request, send_from_directory, abort
 
 import consolidate_report as cr  # reuse the same report builder
+import guardrails
+import jobqueue
+import verification
+from config import settings
 
 APP_DIR = Path(__file__).resolve().parent
 RUNS_DIR = APP_DIR / "runs"
@@ -76,6 +82,83 @@ def scan_env():
 
 
 app = Flask(__name__)
+
+if settings.TRUST_PROXY:
+    # Behind nginx/Caddy: take the client IP from X-Forwarded-For so per-IP
+    # limits apply to the visitor, not to the proxy.
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+
+# --------------------------- serving layer ---------------------------
+# Everything below is about *admitting* work: which queue it goes on, how much
+# of it one client may ask for, and how progress gets back to the browser.
+# The pipeline itself is untouched.
+
+SESSION_COOKIE = "scan_sid"
+
+_services_lock = threading.Lock()
+_limiter = None
+
+
+def queue_backend():
+    return jobqueue.get_backend()
+
+
+def _job_finished(job_id):
+    return queue_backend().state(job_id)["state"] in jobqueue.TERMINAL
+
+
+def rate_limiter():
+    """One limiter per process, built to match whichever queue is in use.
+
+    With Redis, the counters and the verified-domain cache live there too, so
+    every web process enforces one shared budget instead of its own.
+    """
+    global _limiter
+    with _services_lock:
+        if _limiter is None:
+            backend = queue_backend()
+            shared = isinstance(backend, jobqueue.RedisQueueBackend)
+            if shared:
+                verification.set_cache(verification.RedisVerificationCache(backend.r))
+            store = (guardrails.RedisLimitStore(backend.r) if shared
+                     else guardrails.MemoryLimitStore())
+            _limiter = guardrails.RateLimiter(store, is_finished=_job_finished)
+        return _limiter
+
+
+def reset_services():
+    """Drop the cached limiter (used by tests and after a config reload)."""
+    global _limiter
+    with _services_lock:
+        _limiter = None
+
+
+def session_id():
+    """A stable per-browser id, so limits survive an IP shared by many users
+    and apply to a single tab-happy visitor too."""
+    return request.cookies.get(SESSION_COOKIE) or ""
+
+
+def new_session_id():
+    return uuid.uuid4().hex
+
+
+def _sse(event, payload):
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+
+def _rejection(reason, message, extra=None):
+    """A refusal the browser can render: SSE (so EventSource sees it) plus a
+    header any other client or monitor can key off."""
+    payload = {"reason": reason, "message": message}
+    if extra:
+        payload.update(extra)
+    resp = Response(_sse("rejected", payload), mimetype="text/event-stream")
+    resp.headers["Cache-Control"] = "no-cache"
+    resp.headers["X-Scan-Rejected"] = reason
+    return resp
 
 
 # ----------------------------- pipeline -----------------------------
@@ -350,68 +433,173 @@ def run_artifacts(run_name):
 
 @app.route("/")
 def index():
-    return PAGE
+    resp = make_response(PAGE)
+    if not session_id():
+        # Identifies the browser for rate limiting only - no personal data, and
+        # it never leaves this server.
+        resp.set_cookie(SESSION_COOKIE, new_session_id(), max_age=30 * 86400,
+                        samesite="Lax", httponly=True)
+    return resp
+
+
+@app.route("/healthz")
+def healthz():
+    backend = queue_backend()
+    return jsonify({"ok": True, "queue": backend.name, "depth": backend.depth(),
+                    "max_depth": backend.max_depth})
+
+
+@app.route("/api/limits")
+def api_limits():
+    """What this deployment allows - the UI shows the caps up front instead of
+    silently shrinking a scan the user asked for."""
+    return jsonify({
+        "max_pages": settings.CAP_MAX_PAGES,
+        "samples": settings.CAP_SAMPLES,
+        "parallel": settings.CAP_PARALLEL,
+        "scans_per_hour": settings.MAX_SCANS_PER_HOUR,
+        "concurrent_scans": settings.MAX_CONCURRENT_SCANS,
+        "queue_depth": settings.MAX_QUEUE_DEPTH,
+        "scan_timeout": settings.SCAN_TIMEOUT,
+        "verification_required": settings.REQUIRE_DOMAIN_VERIFICATION,
+        "rate_limit_enabled": settings.RATE_LIMIT_ENABLED,
+    })
+
+
+@app.route("/api/verify")
+def api_verify():
+    """The token to publish for a domain, and whether it is already there."""
+    url, error = guardrails.normalize_url(request.args.get("url"))
+    if error:
+        return jsonify({"error": error}), 400
+    domain = guardrails.registrable_domain(url)
+    payload = verification.instructions(domain)
+    recheck = request.args.get("check") == "1"
+    payload["verified"] = (verification.is_verified(domain, use_cache=not recheck)
+                           if settings.REQUIRE_DOMAIN_VERIFICATION or recheck else True)
+    payload["required"] = settings.REQUIRE_DOMAIN_VERIFICATION
+    return jsonify(payload)
+
+
+@app.route("/api/job/<job_id>")
+def api_job(job_id):
+    """Job state on its own, for a client that lost its stream."""
+    return jsonify(queue_backend().state(job_id))
 
 
 @app.route("/scan")
 def scan():
-    """Server-Sent Events: stream progress, end with the report URL."""
-    url = (request.args.get("url") or "").strip()
-    device = "desktop" if request.args.get("device") == "desktop" else "mobile"
-    samples = max(1, min(5, int(request.args.get("samples", 1) or 1)))
-    deep = request.args.get("deep", "1") == "1"
-    max_pages = max(1, min(200, int(request.args.get("max_pages", 30) or 30)))
-    concurrency = max(1, min(6, int(request.args.get("concurrency", 3) or 3)))
-    security = request.args.get("security", "0") == "1"
-    a11y = request.args.get("a11y", "0") == "1"
-    valid_cats = ["performance", "accessibility", "best-practices", "seo"]
-    raw = (request.args.get("categories") or "").split(",")
-    categories = [c for c in valid_cats if c in raw]  # keep canonical order, drop junk
-    # accessibility_scan owns the canonical standard ids; just sanitize the tokens
-    standards = re.findall(r"[a-z0-9_]+", (request.args.get("standards") or "").lower())[:40]
+    """Admit a scan and stream it.
 
-    if not url:
-        return Response("data: ERR No URL provided\n\n", mimetype="text/event-stream")
-    if not urlparse(url).scheme:
-        url = "https://" + url
+    The request no longer runs the pipeline: it is capped, rate limited,
+    gated, put on the queue, and then followed. A worker does the scanning.
+    """
+    params, error, capped = guardrails.sanitize_params(request.args)
+    if error:
+        return _rejection("invalid", error)
 
-    q = queue.Queue()
+    backend = queue_backend()
+    limiter = rate_limiter()
+    keys = guardrails.client_keys(request.remote_addr, session_id())
 
-    def log(msg):
-        q.put(str(msg))
+    try:
+        limiter.check(keys)
+    except guardrails.RateLimitError as exc:
+        return _rejection(exc.reason, exc.message)
 
-    def worker():
-        try:
-            run_name = run_pipeline(url, device, samples, deep, max_pages,
-                                    concurrency, security, categories, log,
-                                    a11y=a11y, standards=standards)
-            if run_name:
-                q.put("__DONE__" + json.dumps({"base": f"/runs/{run_name}/",
-                                               "files": run_artifacts(run_name)}))
-            else:
-                q.put("__FAIL__")
-        except Exception as e:
-            q.put(f"ERROR: {e}")
-            q.put("__FAIL__")
-        finally:
-            q.put(None)  # sentinel
+    allowed, detail = verification.gate(guardrails.registrable_domain(params["url"]),
+                                        guardrails.is_multipage_scan(params))
+    if not allowed:
+        return _rejection("unverified", detail["message"], {"verification": detail})
 
-    threading.Thread(target=worker, daemon=True).start()
+    job_id = jobqueue.new_job_id()
+    limiter.reserve(keys, job_id)       # hold the slot before the job can start
+    try:
+        backend.enqueue(params, client=keys[0][1], job_id=job_id)
+    except jobqueue.QueueFull:
+        limiter.release(keys, job_id)   # a refusal costs the client nothing
+        return _rejection(
+            "queue_full",
+            f"All {backend.max_depth} queue slots are taken right now. "
+            "Please try again shortly - nothing was lost.")
+    limiter.charge(keys, job_id)
 
-    def stream():
+    resp = Response(_stream(job_id, keys, capped, params),
+                    mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                             "X-Scan-Job": job_id})
+    if not session_id():
+        resp.set_cookie(SESSION_COOKIE, new_session_id(), max_age=30 * 86400,
+                        samesite="Lax", httponly=True)
+    return resp
+
+
+KEEPALIVE_EVERY = 15.0   # seconds of silence before a comment frame
+
+
+def _stream(job_id, keys, capped, params):
+    """Follow one job: queue position, then its log, then the outcome."""
+    backend = queue_backend()
+
+    def gen():
+        cursor = 0
+        position = object()          # a sentinel that no position equals
+        running_announced = False
+        last_output = time.time()
+        yield _sse("accepted", {"job": job_id, "capped": capped,
+                                "params": {k: params[k] for k in
+                                           ("max_pages", "samples", "concurrency")}})
+        if capped:
+            yield f"data: {_capped_note(capped, params)}\n\n"
         while True:
-            msg = q.get()
-            if msg is None:
-                break
-            if msg.startswith("__DONE__"):
-                yield f"event: done\ndata: {msg[len('__DONE__'):]}\n\n"
-            elif msg == "__FAIL__":
-                yield "event: fail\ndata: scan failed\n\n"
-            else:
-                yield f"data: {msg}\n\n"
+            # State first, so "position 3" and "running" arrive before the log
+            # lines they explain.
+            state = backend.state(job_id)
+            if (state["state"] == jobqueue.QUEUED and state["position"] is not None
+                    and state["position"] != position):
+                position = state["position"]
+                last_output = time.time()
+                yield _sse("queued", {"position": position, "depth": backend.depth()})
+            elif state["state"] == jobqueue.RUNNING and not running_announced:
+                running_announced = True
+                last_output = time.time()
+                yield _sse("running", {"job": job_id})
 
-    return Response(stream(), mimetype="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+            lines, cursor = backend.logs(job_id, cursor)
+            for line in lines:
+                last_output = time.time()
+                yield f"data: {line}\n\n"
+
+            if state["state"] in jobqueue.TERMINAL:
+                if not running_announced:
+                    # A short scan can go queued -> done between two polls; the
+                    # browser still needs to see that it left the queue.
+                    running_announced = True
+                    yield _sse("running", {"job": job_id})
+                lines, cursor = backend.logs(job_id, cursor)     # drain the tail
+                for line in lines:
+                    yield f"data: {line}\n\n"
+                if state["state"] == jobqueue.DONE and state["result"]:
+                    yield _sse("done", state["result"])
+                else:
+                    yield _sse("fail", {"message": state["error"] or "scan failed"})
+                rate_limiter().release(keys, job_id)
+                break
+
+            if time.time() - last_output > KEEPALIVE_EVERY:
+                last_output = time.time()
+                yield ": keepalive\n\n"       # keeps idle proxies from hanging up
+            backend.wait(job_id, 0.25)
+
+    return gen()
+
+
+def _capped_note(capped, params):
+    labels = {"max_pages": f"max pages -> {params['max_pages']}",
+              "samples": f"samples -> {params['samples']}",
+              "parallel": f"parallel -> {params['concurrency']}"}
+    return ("Server limits applied: "
+            + ", ".join(labels[name] for name in capped if name in labels) + ".")
 
 
 @app.route("/runs/<path:relpath>")
@@ -519,6 +707,18 @@ PAGE = """<!DOCTYPE html>
   .go svg{width:18px;height:18px;stroke:#fff}
   .hint{color:var(--muted);font-size:12.5px}
   /* log */
+  /* queue + refusal notices */
+  .notice{display:none;margin-top:18px;border:1.5px solid #fde68a;background:#fffbeb;border-radius:14px;padding:16px 18px}
+  .notice.err{border-color:#fecaca;background:#fef2f2}
+  .notice .ntitle{font:700 13.5px inherit;color:#92400e;margin-bottom:5px}
+  .notice.err .ntitle{color:#991b1b}
+  .notice .nmsg{font:500 13.5px/1.55 inherit;color:#475569}
+  .verify{margin-top:14px;display:grid;gap:6px}
+  .verify code{display:block;background:#0b1020;color:#c7d2e6;border-radius:9px;padding:10px 12px;
+    font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;word-break:break-all;user-select:all}
+  .verify .vbtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .qbadge{margin-left:auto;font:700 11px inherit;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--brand);background:#eef2ff;border-radius:999px;padding:4px 10px}
   .logwrap{margin-top:20px;display:none}
   .logbar{display:flex;align-items:center;gap:10px;font:600 13px inherit;color:#334155;margin-bottom:8px}
   .spin{width:15px;height:15px;border:2.5px solid #dbe1ea;border-top-color:var(--brand);border-radius:50%;animation:sp .7s linear infinite}
@@ -623,8 +823,24 @@ PAGE = """<!DOCTYPE html>
       <span class="hint">Deep audits run each page through Lighthouse &mdash; large sites take a few minutes.</span>
     </div>
 
+    <div class="notice" id="notice">
+      <div class="ntitle" id="ntitle"></div>
+      <div class="nmsg" id="nmsg"></div>
+      <div class="verify" id="verify" style="display:none">
+        <label class="lbl" style="margin-top:6px">Option 1 &mdash; meta tag in your homepage &lt;head&gt;</label>
+        <code id="vmeta"></code>
+        <label class="lbl" style="margin-top:6px">Option 2 &mdash; DNS TXT record on your domain</label>
+        <code id="vdns"></code>
+        <div class="vbtns">
+          <button class="btn" id="vrecheck" type="button">I&rsquo;ve added it &mdash; re-check</button>
+          <button class="btn" id="vsingle" type="button">Scan just this page instead</button>
+        </div>
+      </div>
+    </div>
+
     <div class="logwrap" id="logwrap">
-      <div class="logbar"><span class="spin" id="spin"></span><span id="status">Scanning&hellip;</span></div>
+      <div class="logbar"><span class="spin" id="spin"></span><span id="status">Scanning&hellip;</span>
+        <span class="qbadge" id="qbadge" style="display:none"></span></div>
       <div id="log"></div>
     </div>
   </div>
@@ -672,7 +888,40 @@ PAGE = """<!DOCTYPE html>
   var go = document.getElementById("go");
   var statusEl = document.getElementById("status");
   var spin = document.getElementById("spin");
+  var qbadge = document.getElementById("qbadge");
+  var notice = document.getElementById("notice");
+  var verifyBox = document.getElementById("verify");
   var scanning = false;   // one scan at a time - the button stays disabled meanwhile
+  var limits = null;      // what this server allows, fetched once
+
+  fetch("/api/limits").then(function(r){ return r.json(); }).then(function(j){
+    limits = j;
+    var mp = document.getElementById("maxpages");
+    mp.max = j.max_pages; if(+mp.value > j.max_pages){ mp.value = j.max_pages; }
+    var sa = document.getElementById("samples");
+    sa.max = j.samples;   if(+sa.value > j.samples){ sa.value = j.samples; }
+    var pa = document.getElementById("concurrency");
+    pa.max = j.parallel;  if(+pa.value > j.parallel){ pa.value = j.parallel; }
+  }).catch(function(){ /* the caps still apply server-side */ });
+
+  function showNotice(title, message, isError){
+    document.getElementById("ntitle").textContent = title;
+    document.getElementById("nmsg").textContent = message;
+    notice.classList.toggle("err", !!isError);
+    notice.style.display = "block";
+  }
+  function hideNotice(){ notice.style.display = "none"; verifyBox.style.display = "none"; }
+
+  function showVerification(v){
+    document.getElementById("vmeta").textContent = v.meta_tag;
+    document.getElementById("vdns").textContent = v.dns_record;
+    verifyBox.style.display = "grid";
+  }
+
+  function setQueueBadge(text){
+    if(text){ qbadge.textContent = text; qbadge.style.display = "inline-block"; }
+    else { qbadge.style.display = "none"; }
+  }
 
   function setBusy(on){
     scanning = on;
@@ -698,6 +947,32 @@ PAGE = """<!DOCTYPE html>
     return out;
   }
 
+  var jobId = null, lastRequest = null;
+
+  // "I've added the meta tag / TXT record" - ask the server to look again.
+  document.getElementById("vrecheck").onclick = function(){
+    if(!lastRequest){ return; }
+    var btn = this; btn.textContent = "Checking\u2026";
+    fetch("/api/verify?check=1&url=" + encodeURIComponent(lastRequest.url))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        btn.textContent = "I\u2019ve added it \u2014 re-check";
+        if(j.verified){ hideNotice(); go.click(); }
+        else { showNotice("Still not visible",
+                          "We could not find " + j.token + " on " + j.domain +
+                          " yet. DNS changes can take a few minutes to propagate.", true);
+               showVerification(j); }
+      })
+      .catch(function(){ btn.textContent = "I\u2019ve added it \u2014 re-check"; });
+  };
+
+  // The always-allowed alternative: one page, no crawl, no verification.
+  document.getElementById("vsingle").onclick = function(){
+    document.getElementById("maxpages").value = 1;
+    hideNotice();
+    go.click();
+  };
+
   go.onclick = function(){
     if(scanning){ return; }              // a scan is already streaming
     var url = document.getElementById("url").value.trim();
@@ -716,12 +991,15 @@ PAGE = """<!DOCTYPE html>
     var maxpages = document.getElementById("maxpages").value || 30;
     var concurrency = document.getElementById("concurrency").value || 3;
 
+    hideNotice();
     logwrap.style.display = "block";
     logEl.textContent = "";
     spin.style.display = "inline-block";
-    statusEl.textContent = "Scanning\u2026";
+    statusEl.textContent = "Submitting\u2026";
+    setQueueBadge(null);
     document.getElementById("results").style.display = "none";
     setBusy(true);
+    lastRequest = { url: url };
 
     var qs = new URLSearchParams({ url:url, device:device, deep:deep, samples:samples,
       max_pages:maxpages, concurrency:concurrency, security:security, categories:lh.join(","),
@@ -729,6 +1007,51 @@ PAGE = """<!DOCTYPE html>
     var es = new EventSource("/scan?" + qs.toString());
 
     es.onmessage = function(e){ logEl.textContent += e.data + "\\n"; logEl.scrollTop = logEl.scrollHeight; };
+
+    // the scan is on the queue - the browser now follows it, it is not running yet
+    es.addEventListener("accepted", function(e){
+      try {
+        var d = JSON.parse(e.data);
+        jobId = d.job;
+        if(d.capped && d.capped.length){
+          showNotice("Adjusted to this server's limits",
+                     "Your request asked for more than this deployment allows, so it was " +
+                     "trimmed to max pages " + d.params.max_pages + ", samples " +
+                     d.params.samples + ", parallel " + d.params.concurrency + ".", false);
+        }
+      } catch(err){ /* keep streaming regardless */ }
+      statusEl.textContent = "Queued\u2026";
+    });
+
+    es.addEventListener("queued", function(e){
+      var d = {};
+      try { d = JSON.parse(e.data); } catch(err){ }
+      statusEl.textContent = "Waiting for a free worker\u2026";
+      setQueueBadge(d.position ? ("Queued \u00b7 position " + d.position) : "Queued");
+    });
+
+    es.addEventListener("running", function(){
+      statusEl.textContent = "Scanning\u2026";
+      setQueueBadge("Running");
+    });
+
+    // refused before anything was queued: rate limit, full queue, or the
+    // domain-ownership gate for a multi-page audit
+    es.addEventListener("rejected", function(e){
+      es.close(); reset(); spin.style.display = "none"; setQueueBadge(null);
+      var d = {};
+      try { d = JSON.parse(e.data); } catch(err){ }
+      var titles = { queue_full: "The queue is full",
+                     hourly: "Scan limit reached",
+                     concurrent: "A scan of yours is already running",
+                     unverified: "Verify this domain first",
+                     invalid: "That request can\u2019t be scanned" };
+      statusEl.textContent = titles[d.reason] || "Not accepted";
+      showNotice(titles[d.reason] || "Not accepted",
+                 d.message || "The scan was not accepted.", true);
+      if(d.verification){ showVerification(d.verification); }
+      logwrap.style.display = "none";
+    });
 
     es.addEventListener("done", function(e){
       es.close(); reset();
@@ -755,6 +1078,7 @@ PAGE = """<!DOCTYPE html>
       else if(has("report.html")){ primary = "report.html"; cap = "Performance report preview"; }
 
       spin.style.display = "none";
+      setQueueBadge(null);
       if(!primary){
         ["openlink","pdflink","seclink","a11ylink"].forEach(function(id){ showLink(id, null); });
         statusEl.textContent = "Done - no report was produced (see the log).";
@@ -770,9 +1094,14 @@ PAGE = """<!DOCTYPE html>
       document.getElementById("results").style.display = "block";
       statusEl.textContent = "Done.";
     });
-    es.addEventListener("fail", function(){ es.close(); reset(); statusEl.textContent = "Scan failed."; spin.style.display="none";
-      logEl.textContent += "\\n--- scan failed ---\\n"; });
-    es.onerror = function(){ es.close(); reset(); spin.style.display="none"; };
+    es.addEventListener("fail", function(e){
+      es.close(); reset(); spin.style.display = "none"; setQueueBadge(null);
+      var why = "";
+      try { why = (JSON.parse(e.data) || {}).message || ""; } catch(err){ }
+      statusEl.textContent = why ? ("Scan failed: " + why) : "Scan failed.";
+      logEl.textContent += "\\n--- scan failed" + (why ? ": " + why : "") + " ---\\n";
+    });
+    es.onerror = function(){ es.close(); reset(); spin.style.display="none"; setQueueBadge(null); };
 
     function reset(){ setBusy(false); }
   };
@@ -781,5 +1110,16 @@ PAGE = """<!DOCTYPE html>
 
 
 if __name__ == "__main__":
+    # Local, single-process convenience only. It binds to loopback and runs the
+    # in-memory queue, so nothing here is shared between processes. Anything
+    # public runs under gunicorn with Redis + separate workers - see README.md.
+    backend = queue_backend()
+    if backend.name == "inline":
+        print(f"Queue: in-memory, {backend.concurrency} worker thread(s), "
+              f"depth {backend.max_depth}. Set REDIS_URL for the real queue.")
+    else:
+        print(f"Queue: {backend.name} ({settings.QUEUE_NAME}) - workers must be running.")
+    print(f"Caps: max_pages<={settings.CAP_MAX_PAGES} samples<={settings.CAP_SAMPLES} "
+          f"parallel<={settings.CAP_PARALLEL} timeout={settings.SCAN_TIMEOUT}s")
     print(f"Dashboard on http://127.0.0.1:5000  (dry-run: {DRYRUN})")
     app.run(host="127.0.0.1", port=5000, threaded=True, debug=False)

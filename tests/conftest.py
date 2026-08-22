@@ -12,6 +12,26 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import accessibility_scan as a11y  # noqa: E402
+import config  # noqa: E402
+import dashboard  # noqa: E402
+import jobqueue  # noqa: E402
+import verification  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def fresh_serving_layer():
+    """A clean queue, rate-limit ledger and verification cache per test.
+
+    The serving layer keeps process-wide state (that is the point of it), so
+    without this one test's scans would count against the next one's budget.
+    """
+    config.reload()
+    jobqueue.set_backend(jobqueue.InlineBackend())
+    verification.set_cache(verification.MemoryVerificationCache())
+    dashboard.reset_services()
+    yield
+    jobqueue.set_backend(None)
+    dashboard.reset_services()
 
 
 def violation(rule_id, impact, tags, help_text="", nodes=1, node_html="<img src=x>"):
