@@ -133,6 +133,18 @@ def _action_card(issue, show_evidence=True):
 # 0. cover
 # --------------------------------------------------------------------------
 
+def _cover_flag(coverage):
+    """The one line that stops a partial run reading as a clean one.
+
+    Printed on the cover, above everything else the report says, whenever the
+    run did not measure every page it set out to.
+    """
+    if not coverage or coverage["status"] == "complete":
+        return ""
+    return (f'<div class="cover-flag"><b>{esc(coverage["label"])}</b> &mdash; '
+            f'{esc(coverage["sentence"])}. {esc(coverage["blurb"])}</div>')
+
+
 def render_cover(report, brand, running=""):
     meta = report["meta"]
     health = report["health"]
@@ -141,12 +153,16 @@ def render_cover(report, brand, running=""):
     client = (_logo(brand.client_logo, brand.client_name, brand.client_monogram, "Prepared for")
               if brand.client_name or brand.client_logo else "")
 
+    coverage = meta.get("coverage")
     facts = [
         _fact("Report date", meta["generated_text"]),
         _fact("Device profile", meta["device"] or "Default"),
         _fact("Pages covered", scope.get("pages_reported", 0) or scope.get("pages_crawled", 0)),
         _fact("Audit scope", ", ".join(CATEGORY_LABEL[c] for c in meta["categories"]) or "-"),
     ]
+    if coverage:
+        facts.append(_fact("Run status",
+                           f'{coverage["label"]} - {coverage["sentence"]}'))
 
     subtitle = brand.report_subtitle or ""
     return (
@@ -158,6 +174,7 @@ def render_cover(report, brand, running=""):
         f'<div class="eyebrow" style="color:rgba(255,255,255,.72)">{esc(subtitle)}</div>'
         f'<h1>{esc(brand.report_title)}</h1>'
         f'<div class="site">{esc(meta["site_url"] or meta["host"])}</div>'
+        f'{_cover_flag(coverage)}'
         f'<div class="cover-body">'
         f'<div><p class="lede" style="color:rgba(255,255,255,.88)">{esc(health["summary"])}</p>'
         f'<div class="cover-facts">{"".join(facts)}</div></div>'
@@ -575,6 +592,42 @@ METHOD_ITEMS = [
 ]
 
 
+COVERAGE_STATE_LABEL = {"blocked": "Blocked", "timeout": "Timed out",
+                        "error": "Error", "skipped": "Skipped"}
+
+COVERAGE_ROWS_SHOWN = 25
+
+
+def _coverage_card(coverage):
+    """Which pages were not measured, and why - in the tools' own words.
+
+    Only rendered for a run that fell short of its own scope. It reports the
+    run's ledger; it computes nothing.
+    """
+    if not coverage or coverage["status"] == "complete":
+        return ""
+    failures = coverage["failures"]
+    rows = "".join(
+        f'<tr><td>{esc(f["url"])}</td>'
+        f'<td class="state">{esc(COVERAGE_STATE_LABEL.get(f["status"], f["status"]))}</td>'
+        f'<td class="why">{esc(f["reason"] or "no reason recorded")}</td></tr>'
+        for f in failures[:COVERAGE_ROWS_SHOWN])
+    more = (f'<p class="muted">+{len(failures) - COVERAGE_ROWS_SHOWN} more page(s) '
+            f'not measured.</p>' if len(failures) > COVERAGE_ROWS_SHOWN else "")
+    table = (f'<table class="covertable"><thead><tr><th>Page</th><th>Outcome</th>'
+             f'<th>Why</th></tr></thead><tbody>{rows}</tbody></table>{more}'
+             if rows else "")
+    notes = ("".join(f"<li>{esc(n)}</li>" for n in coverage["notes"]))
+    notes = f"<ul>{notes}</ul>" if notes else ""
+    failed_class = " failed" if coverage["status"] == "failed" else ""
+    return (
+        f'<div class="coverage{failed_class}" style="margin-top:var(--sp-4)">'
+        f'<h4>Coverage: {esc(coverage["sentence"])}</h4>'
+        f'<p>{esc(coverage["blurb"])} A page listed below was not measured by this '
+        f'run: it has no result here, and its absence is not a pass.</p>'
+        f'{notes}{table}</div>')
+
+
 def render_methodology(report, brand):
     meta = report["meta"]
     tools = "".join(
@@ -607,6 +660,7 @@ def render_methodology(report, brand):
         f'{esc(meta["device"] or "default")} profile.</p>{standards}</div>'
         f'<div class="card"><h4 class="card-title">Scope of this run</h4>'
         f'<table><tbody>{scope_rows}</tbody></table></div></div>'
+        f'{_coverage_card(meta.get("coverage"))}'
         f'<div class="card" style="margin-top:var(--sp-4)">'
         f'<h4 class="card-title">How the numbers were produced</h4>'
         f'<dl class="method">{items}</dl></div>'

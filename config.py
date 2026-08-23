@@ -81,6 +81,19 @@ class Settings:
         self.SCAN_TIMEOUT = _int(env.get("SCAN_TIMEOUT"), 900, 30, 86_400)
         self.JOB_TTL = _int(env.get("JOB_TTL"), 86_400, 60, 30 * 86_400)
 
+        # ---- resilience: what one page, and one run, may cost -----------
+        # PAGE_TIMEOUT bounds a single page; PAGE_RETRIES is how many extra
+        # attempts a *transient* page failure gets (a clear block is never
+        # retried). RUN_BUDGET is the pipeline's own ceiling: it finalizes the
+        # run as 'partial' with whatever completed, which is why it sits below
+        # SCAN_TIMEOUT - the queue's hard kill, which leaves no report at all.
+        self.PAGE_TIMEOUT = _int(env.get("PAGE_TIMEOUT"), 150, 10, 3_600)
+        self.PAGE_RETRIES = _int(env.get("PAGE_RETRIES"), 1, 0, 3)
+        self.RUN_BUDGET = _int(env.get("RUN_BUDGET"),
+                               max(30, int(self.SCAN_TIMEOUT * 0.85)),
+                               30, 86_400)
+        self.PREFLIGHT_TIMEOUT = _int(env.get("PREFLIGHT_TIMEOUT"), 10, 1, 120)
+
         # ---- per-client guardrails -------------------------------------
         self.RATE_LIMIT_ENABLED = _bool(env.get("RATE_LIMIT_ENABLED"), True)
         self.MAX_SCANS_PER_HOUR = _int(env.get("MAX_SCANS_PER_HOUR"), 5, 1, 10_000)

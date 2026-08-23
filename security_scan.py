@@ -223,10 +223,14 @@ def collect_site(site_url, urls, log=print):
         hits.setdefault(rule_id, set()).add(where)
 
     log(f"Security: analyzing {len(urls)} page(s)...")
+    failures = []
     for u in urls:
         try:
             resp, body = _fetch(u)
         except Exception as e:
+            # Recorded, not just logged: a page this scan could not fetch is
+            # unmeasured, and the run's coverage has to be able to say so.
+            failures.append({"url": u, "why": f"{type(e).__name__}: {e}"})
             log(f"  security: skip {u} ({e})")
             continue
         scanned += 1
@@ -244,7 +248,7 @@ def collect_site(site_url, urls, log=print):
         add("no_securitytxt", "__site__")
 
     return {"site_url": site_url, "hits": hits, "scanned": scanned,
-            "total": len(urls), "cert_note": cert_note}
+            "total": len(urls), "cert_note": cert_note, "failures": failures}
 
 
 def html_from(data):

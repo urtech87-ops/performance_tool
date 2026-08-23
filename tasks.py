@@ -35,9 +35,18 @@ def run_scan_job(params, log):
     )
     if not run_name:
         raise RuntimeError("the scan produced no run folder")
-    # Exactly the payload the browser has always received on `event: done`.
-    return {"base": f"/runs/{run_name}/",
-            "files": dashboard.run_artifacts(run_name)}
+    # The payload the browser has always received on `event: done`, plus - for
+    # a run that recorded one - how much of the site it actually covers. A run
+    # folder without a ledger (an older run, or a stubbed pipeline) sends the
+    # original two keys and nothing else.
+    payload = {"base": f"/runs/{run_name}/",
+               "files": dashboard.run_artifacts(run_name)}
+    status = dashboard.run_status(run_name) or {}
+    if status.get("status"):
+        payload["status"] = status["status"]
+        payload["coverage"] = status.get("coverage")
+        payload["notice"] = status.get("notice")
+    return payload
 
 
 def _worker_backend():

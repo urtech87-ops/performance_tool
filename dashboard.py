@@ -54,6 +54,7 @@ from flask import Flask, Response, jsonify, make_response, request, send_from_di
 import consolidate_report as cr  # reuse the same report builder
 import guardrails
 import jobqueue
+import runstate
 import verification
 from config import settings
 
@@ -62,7 +63,7 @@ RUNS_DIR = APP_DIR / "runs"
 RUNS_DIR.mkdir(exist_ok=True)
 DRYRUN = os.environ.get("DASHBOARD_DRYRUN") == "1"
 NPX = "npx.cmd" if os.name == "nt" else "npx"
-PER_PAGE_TIMEOUT = 150  # seconds per page for the deep audit
+PER_PAGE_TIMEOUT = settings.PAGE_TIMEOUT   # seconds per page for the deep audit
 
 def _lighthouse_cmd():
     """Prefer a globally installed `lighthouse`; fall back to `npx lighthouse`."""
@@ -235,13 +236,80 @@ def make_mock(run_dir, url, device, deep):
             }), encoding="utf-8")
 
 
+def _lh_outcome(output, stem):
+    """What one Lighthouse attempt produced: (status, reason, detail).
+
+    The report file on disk - not the exit code - is what says a page was
+    really audited. When there is none, the CLI's own output is read for a
+    condition we can name (a 403, a DNS failure, a hung page) so the page can
+    say why it is missing instead of vanishing into a silent gap.
+    """
+    report = stem.with_name(stem.name + ".report.json")
+    if report.exists() and report.stat().st_size > 0:
+        return runstate.OK, "", ""
+    detail = _clean_block(output)
+    kind = runstate.classify(detail)
+    if kind is None:
+        return runstate.ERROR, "no report", detail
+    return runstate.page_status(kind), kind, detail
+
+
+def _clean_block(text):
+    """A scanner's output with the ANSI noise stripped, trimmed to a few lines."""
+    lines = [_clean(l) for l in str(text or "").splitlines()]
+    lines = [l for l in lines if l.strip()]
+    return "\n".join(lines[-6:])
+
+
+def _preflight(url, state, log):
+    """Ask the site once whether it will talk to us at all.
+
+    A signal, not a verdict: a site that refuses this request may still let
+    real Chrome through, so the scan goes ahead anyway. Only a name that does
+    not resolve - or a connection refused twice - ends the run here, because
+    there is nothing to scan and no reason to spend a worker finding that out
+    the slow way.
+    """
+    signal = runstate.preflight(url, timeout=settings.PREFLIGHT_TIMEOUT)
+    kind = signal.get("kind")
+    if kind == "unreachable":                 # one bounded retry: it may be transient
+        signal = runstate.preflight(url, timeout=settings.PREFLIGHT_TIMEOUT)
+        kind = signal.get("kind")
+    if not kind:
+        return None
+    state.site_signal(kind, signal.get("detail", ""))
+    notice = runstate.friendly(kind)
+    log(f"Pre-flight: {signal.get('detail') or kind}.")
+    if kind in ("dns", "unreachable"):
+        log(f"{notice['title']} - {notice['message']}")
+        state.stage(STAGE_CRAWL, "skipped", signal.get("detail", ""))
+        return kind
+    # blocked / tls: the real browser may still get through, so keep going and
+    # let the recorded outcome of the actual pages have the last word.
+    log("Continuing anyway - the scanners drive a real browser, which the site "
+        "may treat differently.")
+    return None
+
+
+STAGE_CRAWL = "crawl"
+STAGE_LH = "lighthouse"
+STAGE_A11Y = "accessibility"
+STAGE_SEC = "security"
+
+
 def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, categories, log,
                  a11y=False, standards=None):
     """Generator-free worker: does the whole scan, returns the run folder name.
     `categories` = selected Lighthouse categories (subset of
     performance/accessibility/best-practices/seo). Empty means security-only.
     `a11y` turns on the optional axe-core accessibility-compliance scan and
-    `standards` picks which legal frameworks it reports on."""
+    `standards` picks which legal frameworks it reports on.
+
+    The scan is partial-safe: every page is recorded as ok / blocked / timeout /
+    error in a `RunState` that is persisted after each stage, and the run
+    finishes with whatever succeeded rather than with nothing. None of the
+    scoring, metrics or issue extraction below is affected by that - the
+    ledger only records what happened."""
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_name = f"{slugify(url)}-{device}-{stamp}"
     run_dir = RUNS_DIR / run_name
@@ -249,7 +317,17 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
     categories = categories or []
     lh_on = len(categories) > 0
 
+    state = runstate.RunState(run_dir, run_name, url=url, device=device,
+                              budget=settings.RUN_BUDGET)
+    state.primary_stage = STAGE_CRAWL
+    state.save()
+
     device_args = ["--desktop"] if device == "desktop" else []  # mobile is the default
+
+    # 0) is the site reachable at all? (skipped in dry-run: there is no site)
+    if not DRYRUN and _preflight(url, state, log):
+        state.finalize()
+        return run_name
 
     # 1) crawl
     log(f"Crawling {url} ({device}, {samples} sample(s))...")
@@ -278,6 +356,23 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
             log(f"Could not read ci-result.json: {e}")
     log(f"Discovered {len(routes)} page(s).")
 
+    base = origin_of(url)
+
+    def page_url(route):
+        path = (route.get("path") or "/").replace("&amp;", "&")
+        return urljoin(base + "/", path.lstrip("/"))
+
+    # Everything the crawler measured is a real result in its own right - the
+    # deep audit below only adds the itemized findings on top of it.
+    for route in routes:
+        state.record(page_url(route), STAGE_CRAWL, runstate.OK)
+    if routes:
+        state.stage(STAGE_CRAWL, "ok")
+    else:
+        state.stage(STAGE_CRAWL, "failed",
+                    state.signal_detail or "the crawl discovered no pages")
+    state.save()
+
     # Safety net: if the crawl found nothing (blocked crawler, odd sitemap, etc.)
     # but deep audit is on, still audit at least the entered URL so the run
     # produces a usable single-page report instead of failing outright.
@@ -288,9 +383,9 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
 
     # 2) deep audit per page (full recommendations + standalone Lighthouse HTML)
     if deep and lh_on and routes and not DRYRUN:
+        state.primary_stage = STAGE_LH
         lhr = run_dir / "lhr"
         lhr.mkdir(exist_ok=True)
-        base = origin_of(url)
         targets = routes[:max_pages]
         if len(routes) > max_pages:
             log(f"Deep audit limited to first {max_pages} of {len(routes)} pages "
@@ -298,41 +393,97 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         preset = ["--preset=desktop"] if device == "desktop" else []
         only_cats = "--only-categories=" + ",".join(categories)
         lh = LIGHTHOUSE
+        tries = 1 + settings.PAGE_RETRIES
 
         def audit_one(idx, route):
-            path = (route.get("path") or "/").replace("&amp;", "&")
-            full = urljoin(base + "/", path.lstrip("/"))
-            stem = lhr / f"page_{idx:03d}"          # lighthouse appends .report.json/.html
-            t0 = time.time()
-            try:
-                subprocess.run(
-                    lh + [full, "--quiet",
-                          "--output=json", "--output=html", f"--output-path={stem}",
-                          only_cats,
-                          "--no-enable-error-reporting",
-                          "--chrome-flags=--headless=new --no-sandbox --ignore-certificate-errors"] + preset,
-                    cwd=str(run_dir), check=False, timeout=PER_PAGE_TIMEOUT,
-                    env=scan_env(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                )
-            except subprocess.TimeoutExpired:
-                return (full, False, PER_PAGE_TIMEOUT, "timeout")
-            j = stem.with_name(stem.name + ".report.json")
-            ok = j.exists() and j.stat().st_size > 0
-            return (full, ok, int(time.time() - t0), "" if ok else "no report")
+            """One page, with a bounded retry for a transient failure.
 
-        log(f"Deep-auditing {len(targets)} page(s) with {concurrency} in parallel...")
+            A page the site clearly refused is never retried - asking a second
+            time cannot change a 403, and it costs the run's budget."""
+            full = page_url(route)
+            stem = lhr / f"page_{idx:03d}"          # lighthouse appends .report.json/.html
+            attempt = 0
+            status, reason, detail, secs = runstate.SKIPPED, "not attempted", "", 0
+            while attempt < tries:
+                left = state.time_left()
+                if left is not None and left <= 1:
+                    if attempt == 0:
+                        status, reason = runstate.SKIPPED, "run time limit reached"
+                    break
+                limit = (PER_PAGE_TIMEOUT if left is None
+                         else max(5, min(PER_PAGE_TIMEOUT, int(left))))
+                attempt += 1
+                t0 = time.time()
+                try:
+                    proc = subprocess.run(
+                        lh + [full, "--quiet",
+                              "--output=json", "--output=html", f"--output-path={stem}",
+                              only_cats,
+                              "--no-enable-error-reporting",
+                              "--chrome-flags=--headless=new --no-sandbox --ignore-certificate-errors"] + preset,
+                        cwd=str(run_dir), check=False, timeout=limit,
+                        env=scan_env(), stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT, encoding="utf-8", errors="replace",
+                    )
+                    output = getattr(proc, "stdout", "") or ""
+                    secs = int(time.time() - t0)
+                    status, reason, detail = _lh_outcome(output, stem)
+                except subprocess.TimeoutExpired as e:
+                    secs = int(time.time() - t0)
+                    status, reason = runstate.TIMEOUT, "timeout"
+                    detail = _clean_block(getattr(e, "output", ""))
+                except Exception as e:                              # noqa: BLE001
+                    secs = int(time.time() - t0)
+                    status, reason, detail = runstate.ERROR, f"{type(e).__name__}: {e}", ""
+                if status in (runstate.OK, runstate.BLOCKED):
+                    break                       # done, or refused: retrying is pointless
+            return {"url": full, "status": status, "reason": reason,
+                    "seconds": secs, "attempts": attempt, "detail": detail}
+
+        log(f"Deep-auditing {len(targets)} page(s) with {concurrency} in parallel"
+            + (f", up to {tries} attempt(s) each" if tries > 1 else "") + "...")
         done = 0
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        seen_detail = set()
+        from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            futures = {pool.submit(audit_one, i, r): i for i, r in enumerate(targets, 1)}
+            futures = {pool.submit(audit_one, i, r): r for i, r in enumerate(targets, 1)}
             for n, fut in enumerate(as_completed(futures), 1):
-                full, ok, secs, why = fut.result()
-                if ok:
+                try:
+                    out = fut.result()
+                except CancelledError:
+                    continue        # never started: recorded as skipped below
+                retried = " after a retry" if out["attempts"] > 1 else ""
+                if out["status"] == runstate.OK:
                     done += 1
-                    log(f"[{n}/{len(targets)}] OK ({secs}s) {full}")
+                    log(f"[{n}/{len(targets)}] OK ({out['seconds']}s{retried}) {out['url']}")
                 else:
-                    log(f"[{n}/{len(targets)}] skipped ({why}) {full}")
-        log(f"Deep audit complete: {done}/{len(targets)} full reports captured.")
+                    log(f"[{n}/{len(targets)}] skipped ({out['reason']}{retried}) "
+                        f"{out['url']}")
+                    # The tool's own words, once per distinct failure, so 30
+                    # identically blocked pages do not bury the log.
+                    if out["detail"] and out["detail"] not in seen_detail:
+                        seen_detail.add(out["detail"])
+                        for line in out["detail"].splitlines():
+                            log(f"    lighthouse: {line}")
+                state.record(out["url"], STAGE_LH, out["status"], out["reason"],
+                             seconds=out["seconds"], attempts=out["attempts"])
+                if state.expired() and not state.budget_hit:
+                    # One bad site must not hold a worker forever: stop handing
+                    # out new pages and finalize with what completed.
+                    state.budget_hit = True
+                    state.note(f"the run reached its {state.budget}s time limit "
+                               f"before every page was audited")
+                    log(f"Run time limit ({state.budget}s) reached - finalizing with "
+                        f"the pages completed so far.")
+                    for pending in futures:
+                        pending.cancel()
+        state.skip_remaining([page_url(r) for r in targets], STAGE_LH,
+                             "run time limit reached")
+        state.stage(STAGE_LH, "ok" if done else "failed")
+        cov = state.coverage(STAGE_LH)
+        log(f"Deep audit complete: {done}/{len(targets)} full reports captured "
+            f"({cov['percent']}% coverage).")
+        state.save()
     elif deep and lh_on and DRYRUN:
         log("[dry-run] deep-audit reports fabricated")
 
@@ -341,47 +492,80 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
     #    it always did - the consolidated report is additional, not a
     #    replacement.
     def scan_urls():
-        base = origin_of(url)
-        return [urljoin(base + "/", ((r.get("path") or "/").replace("&amp;", "&")).lstrip("/"))
-                for r in routes[:max_pages]] or [url]
+        return [page_url(r) for r in routes[:max_pages]] or [url]
+
+    def out_of_time(what):
+        """True when the run's ceiling leaves no room for another stage."""
+        if not state.expired():
+            return False
+        state.budget_hit = True
+        state.note(f"the {what} scan was skipped - the run reached its "
+                   f"{state.budget}s time limit")
+        log(f"Run time limit reached - skipping the {what} scan.")
+        return True
 
     security_data = None
     if security and not DRYRUN:
-        try:
-            import security_scan as sec
-            security_data = sec.collect_site(url, scan_urls(), log=log)
-            (run_dir / "security.html").write_text(sec.html_from(security_data), encoding="utf-8")
-            log("Security report ready.")
-        except Exception as e:
-            security_data = None
-            log(f"(Security scan failed: {e})")
+        if out_of_time("security"):
+            state.stage(STAGE_SEC, "skipped", "run time limit reached")
+        else:
+            try:
+                import security_scan as sec
+                security_data = sec.collect_site(url, scan_urls(), log=log)
+                (run_dir / "security.html").write_text(sec.html_from(security_data), encoding="utf-8")
+                log("Security report ready.")
+                _record_security(state, security_data, scan_urls())
+                state.stage(STAGE_SEC, "ok")
+            except Exception as e:
+                security_data = None
+                log(f"(Security scan failed: {e})")
+                state.stage(STAGE_SEC, "failed", f"{type(e).__name__}: {e}")
+                state.note(f"the security scan failed: {e}")
+        state.save()
     elif security and DRYRUN:
         (run_dir / "security.html").write_text("<html><body>dry-run security</body></html>", encoding="utf-8")
         log("[dry-run] security report fabricated")
 
     a11y_data = None
     if a11y and not DRYRUN:
-        try:
-            import accessibility_scan as a11y_mod
-            a11y_data = a11y_mod.collect_site(url, scan_urls(), standards=standards,
-                                              concurrency=concurrency,
-                                              work_dir=run_dir / "axe", log=log)
-            (run_dir / "accessibility.html").write_text(
-                a11y_mod.html_from(a11y_data), encoding="utf-8")
-            log("Accessibility report ready.")
-        except Exception as e:
-            a11y_data = None
-            log(f"(Accessibility scan failed: {e})")
+        if out_of_time("accessibility"):
+            state.stage(STAGE_A11Y, "skipped", "run time limit reached")
+        else:
+            try:
+                import accessibility_scan as a11y_mod
+                a11y_data = a11y_mod.collect_site(url, scan_urls(), standards=standards,
+                                                  concurrency=concurrency,
+                                                  work_dir=run_dir / "axe", log=log)
+                (run_dir / "accessibility.html").write_text(
+                    a11y_mod.html_from(a11y_data), encoding="utf-8")
+                log("Accessibility report ready.")
+                _record_accessibility(state, a11y_data)
+                state.stage(STAGE_A11Y, "ok" if a11y_data.get("pages_analyzed") else "failed")
+            except Exception as e:
+                a11y_data = None
+                log(f"(Accessibility scan failed: {e})")
+                state.stage(STAGE_A11Y, "failed", f"{type(e).__name__}: {e}")
+                state.note(f"the accessibility scan failed: {e}")
+        state.save()
     elif a11y and DRYRUN:
         (run_dir / "accessibility.html").write_text(
             "<html><body>dry-run accessibility</body></html>", encoding="utf-8")
         log("[dry-run] accessibility report fabricated")
 
+    # Whichever scan the report leans on decides what "coverage" counts: with
+    # no deep audit, that is the scan that actually measured the pages.
+    if state.primary_stage == STAGE_CRAWL:
+        if a11y_data:
+            state.primary_stage = STAGE_A11Y
+        elif security_data:
+            state.primary_stage = STAGE_SEC
+
     # 4) one consolidated report covering every category that ran
     # Which modes produce a report is unchanged: a Lighthouse category still has
     # to have run. What changed is its contents - the accessibility and security
     # findings from this same run now go into it instead of living only on their
-    # own pages.
+    # own pages, and a partial run says so on its face instead of reading as a
+    # clean pass.
     report_html = run_dir / "report.html"
     wrote_report = False
     if lh_on:
@@ -395,6 +579,7 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
                               categories=categories, site_url=url, device=device,
                               accessibility=a11y_data, security=security_data,
                               standards=standards,
+                              coverage=state.report_coverage(),
                               scope={"pages_crawled": len(routes),
                                      "pages_deep_audited": min(len(routes), max_pages) if deep else 0,
                                      "samples": samples, "max_pages": max_pages}),
@@ -415,7 +600,63 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         except Exception as e:
             log(f"(PDF skipped: {e})")
 
+    status = state.finalize()
+    _log_outcome(state, status, log)
     return run_name
+
+
+def _record_security(state, data, urls):
+    """Per-page outcomes from the passive security scan.
+
+    It reports the pages it could not fetch; everything it did fetch is an ok.
+    """
+    failures = {str(f.get("url")): f for f in (data.get("failures") or [])
+                if isinstance(f, dict)}
+    for url in urls:
+        failure = failures.get(str(url))
+        if failure is None:
+            state.record(url, STAGE_SEC, runstate.OK)
+            continue
+        why = str(failure.get("why") or "")
+        state.record(url, STAGE_SEC, runstate.page_status(runstate.classify(why)),
+                     why or "could not be fetched")
+
+
+def _record_accessibility(state, data):
+    """Per-page outcomes from the axe scan, which already tracks its own."""
+    for url in data.get("analyzed") or []:
+        if url:
+            state.record(url, STAGE_A11Y, runstate.OK)
+    for failure in data.get("failures") or []:
+        if not isinstance(failure, dict) or not failure.get("url"):
+            continue
+        why = str(failure.get("why") or "")
+        state.record(failure["url"], STAGE_A11Y,
+                     runstate.page_status(runstate.classify(why)),
+                     why or "could not be analyzed")
+
+
+def _log_outcome(state, status, log):
+    """The last word in the log: what this run actually covers."""
+    if status == runstate.COMPLETE:
+        log(f"Run complete - {runstate.coverage_sentence(state.report_coverage())}.")
+        return
+    notice = state.notice() or {}
+    if status == runstate.FAILED:
+        log(f"Run FAILED - {notice.get('title', 'the scan could not be completed')}. "
+            f"{notice.get('message', '')}")
+        return
+    log(f"Run PARTIAL - {runstate.coverage_sentence(state.report_coverage())}. "
+        f"Pages that were not measured are unmeasured, not clean.")
+    for failure in state.failures()[:10]:
+        log(f"  - {failure['status']}: {failure['url']} ({failure['reason']})")
+    if len(state.failures()) > 10:
+        log(f"  - ... and {len(state.failures()) - 10} more")
+
+
+def run_status(run_name):
+    """The persisted status ledger of a run, or None when it has none."""
+    return runstate.RunState.load(RUNS_DIR / run_name)
 
 
 # Report files a run can produce, in the order the UI offers them.
@@ -582,7 +823,11 @@ def _stream(job_id, keys, capped, params):
                 if state["state"] == jobqueue.DONE and state["result"]:
                     yield _sse("done", state["result"])
                 else:
-                    yield _sse("fail", {"message": state["error"] or "scan failed"})
+                    # A job that died without leaving a report still owes the
+                    # person a sentence they can act on, not the raw error.
+                    error = state["error"] or "scan failed"
+                    yield _sse("fail", {"message": error,
+                                        "notice": runstate.friendly_from_error(error)})
                 rate_limiter().release(keys, job_id)
                 break
 
@@ -719,6 +964,17 @@ PAGE = """<!DOCTYPE html>
   .verify .vbtns{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
   .qbadge{margin-left:auto;font:700 11px inherit;letter-spacing:.06em;text-transform:uppercase;
     color:var(--brand);background:#eef2ff;border-radius:999px;padding:4px 10px}
+  /* the state of a run, in plain language - the log is for the curious */
+  .statebox{margin:0 0 12px;border-radius:12px;padding:13px 15px;border:1.5px solid var(--line);background:#fff}
+  .statebox.ok{border-color:#bbf7d0;background:#f0fdf4}
+  .statebox.warn{border-color:#fde68a;background:#fffbeb}
+  .statebox.err{border-color:#fecaca;background:#fef2f2}
+  .statebox .stitle{font:700 13.5px inherit;color:var(--ink);margin-bottom:4px}
+  .statebox .smsg{font:500 13.5px/1.55 inherit;color:#475569}
+  .statebox .scov{font:600 12.5px inherit;color:var(--muted);margin-top:6px}
+  .logdetails{margin-top:4px}
+  .logdetails summary{cursor:pointer;font:600 12.5px inherit;color:var(--muted);padding:2px 0}
+  .logdetails summary:hover{color:var(--brand)}
   .logwrap{margin-top:20px;display:none}
   .logbar{display:flex;align-items:center;gap:10px;font:600 13px inherit;color:#334155;margin-bottom:8px}
   .spin{width:15px;height:15px;border:2.5px solid #dbe1ea;border-top-color:var(--brand);border-radius:50%;animation:sp .7s linear infinite}
@@ -841,7 +1097,15 @@ PAGE = """<!DOCTYPE html>
     <div class="logwrap" id="logwrap">
       <div class="logbar"><span class="spin" id="spin"></span><span id="status">Scanning&hellip;</span>
         <span class="qbadge" id="qbadge" style="display:none"></span></div>
-      <div id="log"></div>
+      <div class="statebox" id="statebox" style="display:none">
+        <div class="stitle" id="stitle"></div>
+        <div class="smsg" id="smsg"></div>
+        <div class="scov" id="scov" style="display:none"></div>
+      </div>
+      <details class="logdetails" id="logdetails">
+        <summary>Technical log &mdash; for advanced users</summary>
+        <div id="log"></div>
+      </details>
     </div>
   </div>
 
@@ -903,6 +1167,26 @@ PAGE = """<!DOCTYPE html>
     var pa = document.getElementById("concurrency");
     pa.max = j.parallel;  if(+pa.value > j.parallel){ pa.value = j.parallel; }
   }).catch(function(){ /* the caps still apply server-side */ });
+
+  var statebox = document.getElementById("statebox");
+
+  // The run's own state, in plain language. The raw log stays one click away
+  // in the collapsed <details> below it - it is never the thing a person is
+  // handed instead of an explanation.
+  function showState(kind, title, message, coverage){
+    statebox.className = "statebox " + (kind || "");
+    document.getElementById("stitle").textContent = title || "";
+    document.getElementById("smsg").textContent = message || "";
+    var cov = document.getElementById("scov");
+    if(coverage && coverage.attempted){
+      cov.textContent = "Coverage: " + coverage.ok + " of " + coverage.attempted +
+                        " page(s) (" + (coverage.percent || 0) + "%). Pages that " +
+                        "could not be measured are unmeasured, not clean.";
+      cov.style.display = "block";
+    } else { cov.style.display = "none"; }
+    statebox.style.display = "block";
+  }
+  function hideState(){ statebox.style.display = "none"; }
 
   function showNotice(title, message, isError){
     document.getElementById("ntitle").textContent = title;
@@ -992,6 +1276,8 @@ PAGE = """<!DOCTYPE html>
     var concurrency = document.getElementById("concurrency").value || 3;
 
     hideNotice();
+    hideState();
+    document.getElementById("logdetails").open = false;
     logwrap.style.display = "block";
     logEl.textContent = "";
     spin.style.display = "inline-block";
@@ -1056,11 +1342,26 @@ PAGE = """<!DOCTYPE html>
     es.addEventListener("done", function(e){
       es.close(); reset();
       // payload: {"base":"/runs/<name>/","files":[...files the run wrote...]}
-      var base = e.data, files = null;
+      var base = e.data, files = null, run = {};
       try {
         var payload = JSON.parse(e.data);
-        if(payload && payload.base){ base = payload.base; files = payload.files || []; }
+        if(payload && payload.base){ base = payload.base; files = payload.files || []; run = payload; }
       } catch(err){ /* older payload: the bare run folder */ }
+
+      // How much of the site this report actually covers, said once, up front.
+      var status = run.status || "", notice = run.notice || null;
+      if(status === "failed"){
+        showState("err", (notice && notice.title) || "The scan couldn\u2019t be completed",
+                  (notice && notice.message) || "No page could be measured.", run.coverage);
+      } else if(status === "partial"){
+        showState("warn", (notice && notice.title) || "Partial scan",
+                  (notice && notice.message) ||
+                  "Some pages could not be measured; the report covers the ones that were.",
+                  run.coverage);
+      } else if(status === "complete" && run.coverage && run.coverage.attempted){
+        showState("ok", "Scan complete",
+                  "Every page this run set out to measure was measured.", run.coverage);
+      }
 
       function has(name){
         if(files !== null){ return files.indexOf(name) !== -1; }
@@ -1081,7 +1382,12 @@ PAGE = """<!DOCTYPE html>
       setQueueBadge(null);
       if(!primary){
         ["openlink","pdflink","seclink","a11ylink"].forEach(function(id){ showLink(id, null); });
-        statusEl.textContent = "Done - no report was produced (see the log).";
+        statusEl.textContent = status === "failed" ? "Scan failed." : "No report was produced.";
+        if(!notice){
+          showState("err", "No report was produced",
+                    "The scan finished without measuring any page. The technical log " +
+                    "below has the details.", run.coverage);
+        }
         document.getElementById("results").style.display = "none";
         return;
       }
@@ -1092,13 +1398,19 @@ PAGE = """<!DOCTYPE html>
       showLink("seclink", has("security.html") ? base + "security.html" : null);
       showLink("a11ylink", has("accessibility.html") ? base + "accessibility.html" : null);
       document.getElementById("results").style.display = "block";
-      statusEl.textContent = "Done.";
+      statusEl.textContent = (status === "partial") ? "Done - partial coverage." : "Done.";
     });
     es.addEventListener("fail", function(e){
       es.close(); reset(); spin.style.display = "none"; setQueueBadge(null);
-      var why = "";
-      try { why = (JSON.parse(e.data) || {}).message || ""; } catch(err){ }
-      statusEl.textContent = why ? ("Scan failed: " + why) : "Scan failed.";
+      var why = "", note = null;
+      try { var d = JSON.parse(e.data) || {}; why = d.message || ""; note = d.notice || null; }
+      catch(err){ }
+      statusEl.textContent = "Scan failed.";
+      // The banner explains it; the raw reason stays in the log for whoever
+      // wants it.
+      showState("err", (note && note.title) || "The scan couldn\u2019t be completed",
+                (note && note.message) ||
+                "Something went wrong before a report could be built.", null);
       logEl.textContent += "\\n--- scan failed" + (why ? ": " + why : "") + " ---\\n";
     });
     es.onerror = function(){ es.close(); reset(); spin.style.display="none"; setQueueBadge(null); };

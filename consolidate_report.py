@@ -223,14 +223,16 @@ def merge(ci_pages, lhr_pages):
 
 def build_html(pages, roots, out_path=None, categories=None, *,
                site_url="", device="", accessibility=None, security=None,
-               brand=None, scope=None, tools=None, standards=None, generated=None):
+               brand=None, scope=None, tools=None, standards=None, generated=None,
+               coverage=None):
     """The consolidated report as one standalone HTML document.
 
     Signature and behaviour for the original four arguments are unchanged, so
     every existing caller keeps working. The keyword arguments are what the
     dashboard adds when a run also produced accessibility-standards or security
     findings: with them, one report covers every category instead of three
-    separate pages.
+    separate pages. `coverage` is the run's own record of which pages were
+    measured and which were not - it is printed, never scored.
 
     The rendering itself lives in report_model (what the report says) and
     report_render (how it looks). Nothing here re-scores anything - the pages
@@ -278,9 +280,27 @@ def build_html(pages, roots, out_path=None, categories=None, *,
         scope=scope,
         tools=tools or default_tools(pages, accessibility, security),
         standards=standards,
+        coverage=coverage,
         report_href=report_href,
     )
     return report_render.render_report(report, resolved)
+
+
+def run_coverage(roots):
+    """The coverage ledger a scan left in one of these folders, if any.
+
+    Written after every stage of a run, so pointing this at a run folder that
+    was interrupted still produces a report that states its own coverage
+    instead of quietly presenting partial data as the whole site.
+    """
+    import runstate
+
+    for root in roots:
+        for path in (Path(root), Path(root).parent):
+            saved = runstate.RunState.load(path)
+            if saved:
+                return runstate.report_coverage_from(saved)
+    return None
 
 
 def default_tools(pages, accessibility=None, security=None):
@@ -332,6 +352,7 @@ def main():
     roots = args.roots if args.roots else ["."]
 
     print(f"Scanning: {', '.join(roots)}")
+    coverage = run_coverage(roots)
     ci_pages = load_ci_results(roots)
     lhr_pages = load_lhr_pages(roots)
     pages = merge(ci_pages, lhr_pages)
@@ -342,8 +363,14 @@ def main():
         sys.exit(1)
 
     Path(args.output).write_text(
-        build_html(pages, roots, out_path=args.output, brand=args.brand or None),
+        build_html(pages, roots, out_path=args.output, brand=args.brand or None,
+                   coverage=coverage),
         encoding="utf-8")
+    if coverage and coverage.get("status") != "complete":
+        print(f"  ! partial run: {coverage['pages_ok']} of "
+              f"{coverage['pages_attempted']} page(s) measured "
+              f"({coverage['percent']}%) - the report says so on its cover.",
+              file=sys.stderr)
     src = []
     if ci_pages:
         src.append("ci-result.json")
