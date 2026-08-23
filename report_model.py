@@ -778,6 +778,56 @@ def build_executive(scores, issues, total_pages, health, band_label, band_summar
 # assembly
 # --------------------------------------------------------------------------
 
+RUN_STATUS_LABEL = {
+    "complete": "Complete",
+    "partial": "Partial coverage",
+    "failed": "Failed",
+}
+
+RUN_STATUS_BLURB = {
+    "complete": "Every page this run set out to measure was measured.",
+    "partial": "Some pages could not be measured. They are unmeasured, not clean - "
+               "nothing below speaks for them.",
+    "failed": "No page could be measured. Nothing below is a result.",
+}
+
+
+def normalize_coverage(coverage):
+    """The run's coverage record, in the shape the report renders.
+
+    Counts are copied, never recomputed, and no score anywhere in the report is
+    derived from them. Returns None when a run reported nothing (an older run
+    folder, or a caller that does not track coverage).
+    """
+    if not isinstance(coverage, dict):
+        return None
+    attempted = int(coverage.get("pages_attempted") or 0)
+    ok = int(coverage.get("pages_ok") or 0)
+    status = str(coverage.get("status") or "").lower()
+    if status not in RUN_STATUS_LABEL:
+        status = "complete" if attempted and ok == attempted else "partial"
+    percent = coverage.get("percent")
+    if not isinstance(percent, int):
+        percent = int(round(100.0 * ok / attempted)) if attempted else 0
+    failures = [f for f in (coverage.get("failures") or []) if isinstance(f, dict)]
+    return {
+        "status": status,
+        "label": RUN_STATUS_LABEL[status],
+        "blurb": RUN_STATUS_BLURB[status],
+        "pages_ok": ok,
+        "pages_attempted": attempted,
+        "pages_failed": max(0, attempted - ok),
+        "percent": percent,
+        "sentence": (f"{ok} of {attempted} page(s) measured ({percent}%)"
+                     if attempted else "no pages were measured"),
+        "notes": [str(n) for n in (coverage.get("notes") or [])],
+        "failures": [{"url": str(f.get("url", "")),
+                      "status": str(f.get("status", "error")),
+                      "reason": str(f.get("reason", ""))} for f in failures],
+        "notice": coverage.get("notice") or None,
+    }
+
+
 DEFAULT_TOOLS = [
     {"name": "Unlighthouse", "version": "", "role": "site crawl and scoring"},
     {"name": "Google Lighthouse", "version": "", "role": "per-page audits"},
@@ -787,7 +837,7 @@ DEFAULT_TOOLS = [
 def build_report(pages=None, *, site_url="", device="", roots=None,
                  categories=None, accessibility=None, security=None,
                  brand=None, generated=None, scope=None, tools=None,
-                 report_href=None, standards=None):
+                 report_href=None, standards=None, coverage=None):
     """Assemble the whole report structure.
 
     pages          - consolidate_report.merge() output (may be empty)
@@ -796,6 +846,10 @@ def build_report(pages=None, *, site_url="", device="", roots=None,
     security       - security_scan.collect_site() result, or None
     report_href    - callable(page) -> relative link to the full Lighthouse
                      report, so the appendix keeps the existing links
+    coverage       - the run's own record of which pages were measured and
+                     which were not (runstate.RunState.report_coverage()).
+                     It is reported verbatim: nothing here scores it, and no
+                     number in this report is derived from it.
     """
     pages = list(pages or [])
     lh_categories = list(categories) if categories else (list(LH_CATEGORY_KEYS) if pages else [])
@@ -877,6 +931,15 @@ def build_report(pages=None, *, site_url="", device="", roots=None,
     if security:
         scope.setdefault("pages_security", security.get("scanned", 0))
 
+    coverage = normalize_coverage(coverage)
+    if coverage:
+        # Stated in the scope table too, so a partial run cannot be read as a
+        # clean one from any page of the report.
+        scope.setdefault("pages_measured", coverage["pages_ok"])
+        scope.setdefault("pages_attempted", coverage["pages_attempted"])
+        scope.setdefault("coverage", f"{coverage['percent']}%")
+        scope.setdefault("run_status", coverage["status"])
+
     return {
         "meta": {
             "site_url": site_url,
@@ -891,6 +954,7 @@ def build_report(pages=None, *, site_url="", device="", roots=None,
             "lh_categories": lh_categories,
             "standards": list(standards or []),
             "tools": list(tools or DEFAULT_TOOLS),
+            "coverage": coverage,
         },
         "brand": brand,
         "scores": scores,

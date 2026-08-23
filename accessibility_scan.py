@@ -864,6 +864,9 @@ def collect_site(site_url, urls, standards=None, concurrency=3, work_dir=None, l
     return {
         "site_url": site_url,
         "panel": panel,
+        # The URLs that really were analyzed, so the run's per-page ledger can
+        # tell an unmeasured page from a clean one without re-deriving it.
+        "analyzed": [r.get("url", "") for r in results],
         "violations": violations,
         "incomplete": incomplete,
         "pages_analyzed": pages_analyzed,

@@ -271,6 +271,26 @@ td.path { word-break: normal; overflow-wrap: anywhere; }
 .mini.good b { color: var(--good); } .mini.avg b { color: var(--avg); }
 .mini.poor b { color: var(--poor); } .mini.na b { color: var(--na); }
 
+/* -------------------------------------------------------- run coverage */
+/* A run that measured only part of a site says so on its face - on the cover
+   and again in the methodology - so partial coverage can never be read as a
+   clean pass. */
+.cover-flag { margin-top: var(--sp-3); border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3); font-size: var(--t-sm); font-weight: 600;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.35);
+  color: #fff; }
+.cover-flag b { font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  font-size: var(--t-xs); }
+.coverage { border: 1px solid var(--avg); background: var(--avg-soft);
+  border-radius: var(--r-md); padding: var(--sp-4); color: var(--ink-2); }
+.coverage.failed { border-color: var(--poor); background: var(--poor-soft); }
+.coverage h4 { color: var(--avg); margin-bottom: var(--sp-1); }
+.coverage.failed h4 { color: var(--poor); }
+.coverage ul { margin: var(--sp-2) 0 0; padding-left: var(--sp-4); }
+.covertable td.why { color: var(--ink-3); font-size: var(--t-xs); }
+.covertable td.state { font-weight: 700; text-transform: uppercase;
+  font-size: var(--t-xs); letter-spacing: .04em; white-space: nowrap; }
+
 /* ----------------------------------------------------------- methodology */
 .method dt { font-weight: 700; margin-top: var(--sp-3); }
 .method dd { margin: 2px 0 0; color: var(--ink-2); }

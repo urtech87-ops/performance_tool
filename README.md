@@ -76,6 +76,22 @@ Everything is environment variables; the defaults are the small, safe ones.
 | `SCAN_TIMEOUT` | `900` | Seconds one scan may take before the worker kills it. |
 | `JOB_TTL` | `86400` | How long job state and logs are kept in Redis. |
 
+### Resilience: what one page, and one run, may cost
+
+A scan is a lot of independent page fetches, and any of them can fail. These
+bound the damage one bad page - or one bad site - can do.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `PAGE_TIMEOUT` | `150` | Seconds one page's deep audit may take. |
+| `PAGE_RETRIES` | `1` | Extra attempts a **transient** page failure gets. A clear 403/block is never retried. |
+| `RUN_BUDGET` | `85% of SCAN_TIMEOUT` | The pipeline's own ceiling. On hitting it the run finalizes as `partial` with whatever completed. |
+| `PREFLIGHT_TIMEOUT` | `10` | Seconds for the one request that checks the site answers at all. |
+
+`RUN_BUDGET` sits below `SCAN_TIMEOUT` on purpose: `SCAN_TIMEOUT` is the
+queue's hard kill, which leaves no report at all, while `RUN_BUDGET` is the
+pipeline stopping itself in time to deliver one.
+
 ### Per-client guardrails
 
 | Variable | Default | Meaning |
@@ -131,6 +147,50 @@ command line. DNS lookups use `dnspython` when installed and fall back to
 
 ---
 
+## Partial runs, and saying so
+
+A run always produces a report from whatever succeeded. If page 40 of 55
+fails, the other 39 are still delivered - labelled with the coverage they
+actually have.
+
+**The ledger.** `runstate.RunState` records every page a stage touches as
+`ok` / `blocked` / `timeout` / `error` / `skipped`, with the reason in the
+tool's own words, and persists it to `run-status.json` inside the run folder
+**after every stage**. A run whose worker died mid-scan is still reportable:
+
+```bash
+python consolidate_report.py runs/<run-folder> -o report.html
+```
+
+picks the ledger up on its own and states the coverage on the report's cover.
+
+**The run status.** `complete` (every attempted page was measured), `partial`
+(some were) or `failed` (none were). It appears on the report cover, in the
+methodology section - with the list of pages that were not measured and why -
+and as a banner in the UI.
+
+**Friendly failures.** The common conditions are recognised from what the
+scanners actually printed and turned into one plain sentence:
+
+| Condition | What the person is told |
+|---|---|
+| whole-site 403 / bot protection | "This site is blocking automated scans. Try a site you control, or verify domain ownership." |
+| DNS / unreachable | "We couldn't reach this site." |
+| TLS / certificate | "The site's HTTPS certificate couldn't be verified." + why it matters |
+| global timeout / stuck site | "The scan timed out." |
+
+The raw log is never shown in place of that sentence - it stays one click
+away, in a collapsed *Technical log* section for whoever wants it.
+
+**Honesty carries through.** A partial run is labelled partial everywhere it
+appears: coverage percentage, the pages that were skipped and why, and the
+plain statement that an unmeasured page is unmeasured, not clean. The pinned
+tool versions and the automated-only caveat are unchanged.
+
+None of this touches the scoring, the metrics, the issue extraction or the
+report's layout. The ledger records what happened; nothing in the report is
+derived from it.
+
 ## How a scan flows
 
 1. `GET /scan?…` - the browser opens an SSE stream.
@@ -143,7 +203,11 @@ command line. DNS lookups use `dnspython` when installed and fall back to
    for `unverified`, the verification instructions. Refusals also set an
    `X-Scan-Rejected` header.
 4. A worker picks the job up and calls `run_pipeline` with exactly the
-   arguments it has always taken (`tasks.run_scan_job`).
+   arguments it has always taken (`tasks.run_scan_job`). The `done` payload
+   carries the run's `status`, `coverage` and (when it fell short) the
+   plain-language `notice`, so the browser can state what the report covers.
+   A job that died without leaving a run folder gets the same treatment: its
+   `fail` event carries a `notice` alongside the raw message.
 5. Log lines travel back through the queue, so any web process can stream a
    scan any other one accepted.
 
@@ -162,3 +226,9 @@ stubbed at `run_pipeline`, and the RQ path runs against `fakeredis`.
 * `tests/test_guardrails.py` - caps enforced even when the client oversends,
   rate limits, clean refusals, the ownership gate, and the SSE contract.
 * `tests/test_redis_queue.py` - the same job through real RQ + Redis.
+* `tests/test_scan_resilience.py` - a run where some pages fail (a partial
+  report with the right coverage), a fully blocked site (the friendly state,
+  not a crash), and the run budget (finalize as partial).
+* `tests/test_runstate.py` - the ledger itself: what counts as blocked rather
+  than broken, when a run is partial rather than failed, and the words each
+  condition is given.
