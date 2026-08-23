@@ -37,6 +37,8 @@ Run (public - Redis queue, worker pool, real web server): see README.md.
 Set DASHBOARD_DRYRUN=1 to preview the UI/pipeline without a real scan.
 """
 
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -55,6 +57,8 @@ import consolidate_report as cr  # reuse the same report builder
 import guardrails
 import jobqueue
 import runstate
+import scanauth
+import scanconfig
 import verification
 from config import settings
 
@@ -180,9 +184,17 @@ def _clean(line):
     return ANSI_RE.sub("", line).rstrip()
 
 
-def run_stream(cmd, cwd, log, env=None):
-    """Run a subprocess, streaming its output into the log queue."""
-    log(f"$ {' '.join(cmd)}")
+def run_stream(cmd, cwd, log, env=None, redact=None):
+    """Run a subprocess, streaming its output into the log queue.
+
+    `redact` is a `scanauth.Redactor`: the command is echoed through it, so a
+    credential handed to a scanner never reaches the log. Its *output* is
+    redacted too, by the log callable the pipeline wraps - belt and braces,
+    because a tool that echoes back the header it was given would otherwise
+    print it verbatim.
+    """
+    echoed = (redact or scanauth.NULL).cmd(cmd)
+    log(f"$ {' '.join(echoed)}")
     proc = subprocess.Popen(
         cmd, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         encoding="utf-8", errors="replace", bufsize=1, env=env,
@@ -296,20 +308,72 @@ STAGE_LH = "lighthouse"
 STAGE_A11Y = "accessibility"
 STAGE_SEC = "security"
 
+# The Chrome flags every Lighthouse audit has always run with.
+BASE_CHROME_FLAGS = "--headless=new --no-sandbox --ignore-certificate-errors"
+
+
+def _chrome_flags(cfg):
+    """`--chrome-flags=...` for one Lighthouse audit.
+
+    A custom viewport is emulated by Lighthouse (`--screenEmulation.*`), but
+    Chrome's own window still has to be big enough to hold it, or a wide
+    desktop viewport gets a scrollbar it would never have in real life.
+    """
+    flags = BASE_CHROME_FLAGS
+    width, height, _dpr = cfg.screen("")
+    if width and height:
+        flags += f" --window-size={width},{height}"
+    return f"--chrome-flags={flags}"
+
+
+def _crawl_auth_flags(credentials):
+    """`unlighthouse-ci`'s own --auth / --cookies, or nothing."""
+    return credentials.crawl_flags() if credentials else []
+
+
+def _browser_kwargs(cfg, credentials):
+    """The `browser=` keyword for a Playwright-driven scanner, or {}.
+
+    Returned as kwargs rather than a value so a run with neither credentials
+    nor emulation calls the scanner with the exact signature it always used.
+    """
+    context = dict(cfg.browser_context())
+    if credentials:
+        context.update(credentials.browser_payload())
+    return {"browser": context} if context else {}
+
 
 def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, categories, log,
-                 a11y=False, standards=None):
+                 a11y=False, standards=None, scan_config=None, credentials=None):
     """Generator-free worker: does the whole scan, returns the run folder name.
     `categories` = selected Lighthouse categories (subset of
     performance/accessibility/best-practices/seo). Empty means security-only.
     `a11y` turns on the optional axe-core accessibility-compliance scan and
     `standards` picks which legal frameworks it reports on.
 
+    `scan_config` (a `scanconfig.ScanConfig`) and `credentials` (a
+    `scanauth.Credentials`) are inputs to the scanners and nothing more: they
+    add flags to the `unlighthouse-ci` and `lighthouse` command lines and, for
+    a scripted login, one browser run before the crawl. Neither touches the
+    scoring, the metrics or the report - with both left at their defaults the
+    commands below are exactly the ones this pipeline has always run.
+
+    Credentials never leave this function's memory. Every line logged from here
+    down goes through a redactor first, and nothing written to the run folder -
+    the ledger, the reports, the Lighthouse output - is ever given them.
+
     The scan is partial-safe: every page is recorded as ok / blocked / timeout /
     error in a `RunState` that is persisted after each stage, and the run
     finishes with whatever succeeded rather than with nothing. None of the
     scoring, metrics or issue extraction below is affected by that - the
     ledger only records what happened."""
+    cfg = scan_config if scan_config is not None else scanconfig.DEFAULT
+    creds = credentials
+    # From here on `log` cannot emit a credential, whoever generated the line.
+    redact = scanauth.redactor_for(creds)
+    log = redact.wrap(log)
+
+    device = cfg.family(device)      # a chosen handset decides the form factor
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_name = f"{slugify(url)}-{device}-{stamp}"
     run_dir = RUNS_DIR / run_name
@@ -322,12 +386,30 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
     state.primary_stage = STAGE_CRAWL
     state.save()
 
-    device_args = ["--desktop"] if device == "desktop" else []  # mobile is the default
+    if not cfg.is_default:
+        log(f"Scan conditions: {cfg.summary(device)}.")
+    if creds:
+        # What was supplied, never what it was. The ledger and the reports are
+        # not told even this much.
+        log(f"Authenticated scan: {creds.describe()}.")
 
     # 0) is the site reachable at all? (skipped in dry-run: there is no site)
     if not DRYRUN and _preflight(url, state, log):
         state.finalize()
         return run_name
+
+    # 0b) a scripted login, if one was configured: sign in once in a real
+    #     browser and carry the resulting session cookies through the scan.
+    if creds and creds.login and not DRYRUN:
+        try:
+            import scanlogin
+            scanlogin.perform(creds, scan_config=cfg, log=log)
+        except Exception as e:                                     # noqa: BLE001
+            # A failed login is not a failed run: the site may still serve
+            # public pages, and the per-page ledger will show what happened.
+            log(f"(Login failed: {redact.text(e)} - continuing unauthenticated.)")
+            state.note("the scripted login failed; pages were requested without "
+                       "a signed-in session")
 
     # 1) crawl
     log(f"Crawling {url} ({device}, {samples} sample(s))...")
@@ -337,10 +419,10 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         time.sleep(0.3)
     else:
         rc = run_stream(
-            [NPX, "unlighthouse-ci", "--site", url, *device_args,
-             "--samples", str(samples), "--throttle",
-             "--reporter", "jsonExpanded"],
-            cwd=run_dir, log=log, env=scan_env(),
+            [NPX, "unlighthouse-ci", "--site", url, *cfg.crawl_flags(device),
+             "--samples", str(samples),
+             "--reporter", "jsonExpanded", *_crawl_auth_flags(creds)],
+            cwd=run_dir, log=log, env=scan_env(), redact=redact,
         )
         if rc != 0:
             log(f"Crawl exited with code {rc} (continuing with whatever was written).")
@@ -390,7 +472,11 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         if len(routes) > max_pages:
             log(f"Deep audit limited to first {max_pages} of {len(routes)} pages "
                 f"(raise 'Max pages' to cover all).")
-        preset = ["--preset=desktop"] if device == "desktop" else []
+        # Emulation + throttling from the scan configuration (with everything
+        # at its default this is the same `--preset=desktop`/nothing as before),
+        # then the credential headers, which are never echoed anywhere.
+        preset = cfg.lighthouse_flags(device)
+        auth_flags = creds.lighthouse_flags() if creds else []
         only_cats = "--only-categories=" + ",".join(categories)
         lh = LIGHTHOUSE
         tries = 1 + settings.PAGE_RETRIES
@@ -420,7 +506,7 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
                               "--output=json", "--output=html", f"--output-path={stem}",
                               only_cats,
                               "--no-enable-error-reporting",
-                              "--chrome-flags=--headless=new --no-sandbox --ignore-certificate-errors"] + preset,
+                              _chrome_flags(cfg)] + preset + auth_flags,
                         cwd=str(run_dir), check=False, timeout=limit,
                         env=scan_env(), stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT, encoding="utf-8", errors="replace",
@@ -533,9 +619,16 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
         else:
             try:
                 import accessibility_scan as a11y_mod
+                # A page behind a login is not an accessible page, it is an
+                # unmeasured one - so the axe runner gets the same session and
+                # the same device the rest of the scan is using. The extras are
+                # only passed when there are any, so an ordinary run calls
+                # collect_site exactly as it always did.
+                extra = _browser_kwargs(cfg, creds)
                 a11y_data = a11y_mod.collect_site(url, scan_urls(), standards=standards,
                                                   concurrency=concurrency,
-                                                  work_dir=run_dir / "axe", log=log)
+                                                  work_dir=run_dir / "axe", log=log,
+                                                  **extra)
                 (run_dir / "accessibility.html").write_text(
                     a11y_mod.html_from(a11y_data), encoding="utf-8")
                 log("Accessibility report ready.")
@@ -704,6 +797,7 @@ def api_limits():
         "scan_timeout": settings.SCAN_TIMEOUT,
         "verification_required": settings.REQUIRE_DOMAIN_VERIFICATION,
         "rate_limit_enabled": settings.RATE_LIMIT_ENABLED,
+        "scan_auth_enabled": settings.ALLOW_SCAN_AUTH,
     })
 
 
@@ -728,51 +822,164 @@ def api_job(job_id):
     return jsonify(queue_backend().state(job_id))
 
 
-@app.route("/scan")
-def scan():
-    """Admit a scan and stream it.
+class Rejected(Exception):
+    """A request that will not be queued, with the reason the client is told."""
 
-    The request no longer runs the pipeline: it is capped, rate limited,
-    gated, put on the queue, and then followed. A worker does the scanning.
+    def __init__(self, reason, message, extra=None):
+        super().__init__(message)
+        self.reason, self.message, self.extra = reason, message, extra or {}
+
+
+def _admit(source, credentials, sid):
+    """Cap, rate-limit, gate and enqueue one scan.
+
+    Returns `(job_id, keys, capped, params)`, or raises `Rejected`. This is the
+    whole admission path, shared by the GET stream and the POST submission, so
+    the two cannot drift apart on what a client is allowed to ask for.
+
+    `credentials` is handed to the queue *beside* the job rather than inside
+    it: `params` is what gets stored and echoed, and a credential is never
+    part of that.
     """
-    params, error, capped = guardrails.sanitize_params(request.args)
+    params, error, capped = guardrails.sanitize_params(source)
     if error:
-        return _rejection("invalid", error)
+        raise Rejected("invalid", error)
 
     backend = queue_backend()
     limiter = rate_limiter()
-    keys = guardrails.client_keys(request.remote_addr, session_id())
+    keys = guardrails.client_keys(request.remote_addr, sid)
 
     try:
         limiter.check(keys)
     except guardrails.RateLimitError as exc:
-        return _rejection(exc.reason, exc.message)
+        raise Rejected(exc.reason, exc.message)
 
     allowed, detail = verification.gate(guardrails.registrable_domain(params["url"]),
                                         guardrails.is_multipage_scan(params))
     if not allowed:
-        return _rejection("unverified", detail["message"], {"verification": detail})
+        raise Rejected("unverified", detail["message"], {"verification": detail})
 
     job_id = jobqueue.new_job_id()
     limiter.reserve(keys, job_id)       # hold the slot before the job can start
     try:
-        backend.enqueue(params, client=keys[0][1], job_id=job_id)
+        backend.enqueue(params, client=keys[0][1], job_id=job_id,
+                        credentials=credentials or None)
     except jobqueue.QueueFull:
         limiter.release(keys, job_id)   # a refusal costs the client nothing
-        return _rejection(
+        raise Rejected(
             "queue_full",
             f"All {backend.max_depth} queue slots are taken right now. "
             "Please try again shortly - nothing was lost.")
     limiter.charge(keys, job_id)
+    return job_id, keys, capped, params
 
-    resp = Response(_stream(job_id, keys, capped, params),
+
+def _stream_token(job_id, sid):
+    """Proof that the browser following a job is the one that started it.
+
+    The stream carries a scan's whole log, so it is not something a job id
+    guessed off the wire should open.
+
+    It reuses the deployment's one cross-process secret, with the purpose
+    written into the message so a stream token and a domain-verification token
+    can never be mistaken for one another.
+    """
+    key = hashlib.sha256((sid or "").encode()).hexdigest()
+    mac = hmac.new(settings.VERIFY_TOKEN_SECRET.encode(),
+                   f"scan-stream:{job_id}|{key}".encode(), hashlib.sha256)
+    return mac.hexdigest()[:32]
+
+
+def _stream_response(job_id, keys, capped, params):
+    return Response(_stream(job_id, keys, capped, params),
                     mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
                              "X-Scan-Job": job_id})
+
+
+@app.route("/scan", methods=["GET"])
+def scan():
+    """Admit a scan and stream it, in one request.
+
+    The original entry point, unchanged and still the whole API for an
+    unauthenticated scan. It reads the query string, which is precisely why it
+    never accepts credentials: a query string is written to access logs, sent
+    in `Referer` headers, and kept in the user's own history. Anything secret
+    comes in through POST below.
+    """
+    try:
+        job_id, keys, capped, params = _admit(request.args, None, session_id())
+    except Rejected as exc:
+        return _rejection(exc.reason, exc.message, exc.extra)
+
+    resp = _stream_response(job_id, keys, capped, params)
     if not session_id():
         resp.set_cookie(SESSION_COOKIE, new_session_id(), max_age=30 * 86400,
                         samesite="Lax", httponly=True)
     return resp
+
+
+@app.route("/scan", methods=["POST"])
+def scan_submit():
+    """Submit a scan whose settings include credentials.
+
+    The two halves of a scan are split here on purpose: this POST carries the
+    request body (where a password may live and where nothing logs it), and
+    the browser then follows the job with an EventSource on `/scan/stream/...`,
+    which carries nothing but the job id and a token. A credential therefore
+    never appears in a URL, an access log, or a browser history entry.
+
+    Answers with the job to follow, or 4xx and the reason it was refused.
+    """
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        body = request.form
+    credentials, error = guardrails.extract_credentials(body)
+    if error:
+        return jsonify({"reason": "invalid", "message": error}), 400
+
+    sid = session_id() or new_session_id()
+    try:
+        job_id, keys, capped, params = _admit(body, credentials, sid)
+    except Rejected as exc:
+        payload = {"reason": exc.reason, "message": exc.message}
+        payload.update(exc.extra)
+        status = 429 if exc.reason in ("hourly", "concurrent", "queue_full") else 400
+        return jsonify(payload), status
+    finally:
+        # Whatever happened, this process is done with them: either the queue
+        # has taken a copy, or the request was refused and there is nothing to
+        # take. Either way they do not stay in the web process's memory.
+        if credentials is not None:
+            credentials.scrub()
+
+    resp = jsonify({
+        "job": job_id,
+        "capped": capped,
+        # Only ever the public half of the request - the client already knows
+        # what it sent, and this is what a "capped" notice is built from.
+        "params": {k: params[k] for k in ("max_pages", "samples", "concurrency")},
+        "stream": f"/scan/stream/{job_id}?t={_stream_token(job_id, sid)}",
+    })
+    resp.headers["X-Scan-Job"] = job_id
+    if not session_id():
+        resp.set_cookie(SESSION_COOKIE, sid, max_age=30 * 86400,
+                        samesite="Lax", httponly=True)
+    return resp
+
+
+@app.route("/scan/stream/<job_id>")
+def scan_stream(job_id):
+    """Follow a job submitted by POST. Carries no scan settings at all."""
+    sid = session_id()
+    token = request.args.get("t") or ""
+    if not hmac.compare_digest(token, _stream_token(job_id, sid)):
+        return _rejection("invalid", "That scan belongs to a different session.")
+    keys = guardrails.client_keys(request.remote_addr, sid)
+    state = queue_backend().state(job_id)
+    if state["state"] == jobqueue.UNKNOWN:
+        return _rejection("invalid", "That scan is no longer available.")
+    return _stream_response(job_id, keys, [], None)
 
 
 KEEPALIVE_EVERY = 15.0   # seconds of silence before a comment frame
@@ -787,9 +994,13 @@ def _stream(job_id, keys, capped, params):
         position = object()          # a sentinel that no position equals
         running_announced = False
         last_output = time.time()
+        # `params` is None for a stream the client is only *following*: it was
+        # told what was accepted in the POST's own answer, and repeating a
+        # fabricated copy of it here would be worse than saying nothing.
         yield _sse("accepted", {"job": job_id, "capped": capped,
                                 "params": {k: params[k] for k in
-                                           ("max_pages", "samples", "concurrency")}})
+                                           ("max_pages", "samples", "concurrency")}
+                                if params else {}})
         if capped:
             yield f"data: {_capped_note(capped, params)}\n\n"
         while True:
@@ -935,6 +1146,30 @@ PAGE = """<!DOCTYPE html>
   .num span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   .num input{width:84px;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;font:600 14px inherit;color:var(--ink)}
   .num input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
+  .num.wide input{width:200px}
+  .num.grow{flex:1 1 240px}
+  .num.grow input{width:100%}
+  /* advanced groups */
+  .agroup{margin-top:22px;padding-top:16px;border-top:1px dashed var(--line)}
+  .agroup:first-of-type{border-top:0;padding-top:0}
+  .agroup > .atitle{font:700 12px inherit;letter-spacing:.06em;text-transform:uppercase;color:#334155;
+    display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .agroup > .ahint{font:500 12.5px/1.5 inherit;color:var(--muted);margin-bottom:12px}
+  .sel{display:flex;flex-direction:column;gap:5px}
+  .sel span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .sel select{padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;font:600 14px inherit;
+    color:var(--ink);background:#fbfcfe;min-width:230px}
+  .sel select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
+  .num input[type=password],.num input[type=text].tin{width:200px}
+  .num textarea{width:100%;min-height:70px;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;
+    font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);resize:vertical}
+  .num textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
+  /* the credentials block says, on its face, what happens to what you type */
+  .agroup.secret{border:1.5px solid #ddd0f7;background:#faf8ff;border-radius:14px;padding:16px 18px;margin-top:22px}
+  .agroup.secret > .atitle{color:var(--wcag)}
+  .privacy{display:flex;gap:9px;align-items:flex-start;font:500 12.5px/1.55 inherit;color:#475569;
+    background:#fff;border:1px solid #ddd0f7;border-radius:10px;padding:10px 12px;margin-bottom:14px}
+  .privacy svg{width:15px;height:15px;stroke:var(--wcag);flex:0 0 auto;margin-top:2px}
   /* toggle switch */
   .switch{position:relative;width:40px;height:23px;flex:0 0 auto}
   .switch input{opacity:0;width:0;height:0}
@@ -1066,11 +1301,84 @@ PAGE = """<!DOCTYPE html>
 
     <details class="adv">
       <summary><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>Advanced options</summary>
-      <div class="adv-grid">
-        <label class="sw"><span class="switch"><input type="checkbox" id="deep" checked><span class="track"></span></span>Fix recommendations &amp; per-page reports</label>
-        <div class="num"><span>Samples</span><input id="samples" type="number" min="1" max="5" value="1"></div>
-        <div class="num"><span>Max pages</span><input id="maxpages" type="number" min="1" max="200" value="30"></div>
-        <div class="num"><span>Parallel</span><input id="concurrency" type="number" min="1" max="6" value="3"></div>
+
+      <div class="agroup">
+        <div class="atitle">Scan depth</div>
+        <div class="adv-grid">
+          <label class="sw"><span class="switch"><input type="checkbox" id="deep" checked><span class="track"></span></span>Fix recommendations &amp; per-page reports</label>
+          <div class="num"><span>Samples</span><input id="samples" type="number" min="1" max="5" value="1"></div>
+          <div class="num"><span>Max pages</span><input id="maxpages" type="number" min="1" max="200" value="30"></div>
+          <div class="num"><span>Parallel</span><input id="concurrency" type="number" min="1" max="6" value="3"></div>
+        </div>
+      </div>
+
+      <div class="agroup">
+        <div class="atitle">Connection</div>
+        <div class="ahint">The network the pages are measured over. &ldquo;Lighthouse default&rdquo; is the
+          simulated Slow 4G every score you have seen so far was measured on &mdash; change it and the
+          numbers change with it, so compare like with like.</div>
+        <div class="adv-grid">
+          <label class="sel"><span>Throttling</span>
+            <select id="throttling"><!--THROTTLE_OPTIONS--></select>
+          </label>
+          <div class="num" id="customdown" style="display:none"><span>Download Kbps</span><input id="down_kbps" type="number" min="1" max="1000000" value="5000"></div>
+          <div class="num" id="customup" style="display:none"><span>Upload Kbps</span><input id="up_kbps" type="number" min="1" max="1000000" value="1000"></div>
+          <div class="num" id="customlat" style="display:none"><span>Latency ms</span><input id="latency_ms" type="number" min="0" max="10000" value="100"></div>
+        </div>
+      </div>
+
+      <div class="agroup">
+        <div class="atitle">Device &amp; viewport</div>
+        <div class="ahint">A named handset sets the form factor, the screen and the User-Agent together.
+          Leave the width, height and pixel ratio empty to use the device&rsquo;s own.</div>
+        <div class="adv-grid">
+          <label class="sel"><span>Device profile</span>
+            <select id="device_profile"><!--DEVICE_OPTIONS--></select>
+          </label>
+          <div class="num"><span>Width</span><input id="viewport_width" type="number" min="200" max="3840" placeholder="auto"></div>
+          <div class="num"><span>Height</span><input id="viewport_height" type="number" min="200" max="3840" placeholder="auto"></div>
+          <div class="num"><span>Pixel ratio</span><input id="dpr" type="number" min="0.5" max="5" step="0.25" placeholder="auto"></div>
+        </div>
+        <div class="adv-grid">
+          <div class="num grow"><span>User-Agent override</span><input id="user_agent" type="text" class="tin" placeholder="leave empty for the device's own" autocomplete="off" spellcheck="false"></div>
+        </div>
+      </div>
+
+      <div class="agroup secret">
+        <div class="atitle"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Sign in to the site</div>
+        <div class="ahint">For staging servers, member areas and anything behind a password. Fill in only
+          what the site needs &mdash; all three methods can be combined.</div>
+        <div class="privacy">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 3l7 4v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+          <span><strong>These fields are never stored.</strong> They are sent once, over this
+          request&rsquo;s body, used in memory for this scan and wiped when it ends. Nothing here is
+          written to the run folder, the report, the scan log, the saved settings below, or any
+          history &mdash; so a re-run asks for them again.</span>
+        </div>
+        <div class="adv-grid">
+          <div class="num"><span>HTTP Basic user</span><input id="auth_user" type="text" class="tin" data-secret="1" autocomplete="off" spellcheck="false"></div>
+          <div class="num"><span>HTTP Basic password</span><input id="auth_pass" type="password" class="tin" data-secret="1" autocomplete="new-password"></div>
+        </div>
+        <div class="adv-grid">
+          <div class="num grow"><span>Cookies</span><textarea id="cookies" data-secret="1" autocomplete="off" spellcheck="false" placeholder="session=abc123; consent=accepted"></textarea></div>
+        </div>
+        <div class="adv-grid">
+          <div class="num grow"><span>Login form URL</span><input id="login_url" type="text" data-secret="1" autocomplete="off" spellcheck="false" placeholder="https://example.com/login"></div>
+        </div>
+        <div class="adv-grid">
+          <div class="num"><span>Username selector</span><input id="login_user_selector" type="text" class="tin" data-secret="1" autocomplete="off" spellcheck="false" placeholder="#username"></div>
+          <div class="num"><span>Password selector</span><input id="login_pass_selector" type="text" class="tin" data-secret="1" autocomplete="off" spellcheck="false" placeholder="#password"></div>
+          <div class="num"><span>Submit selector</span><input id="login_submit_selector" type="text" class="tin" data-secret="1" autocomplete="off" spellcheck="false" placeholder="button[type=submit]"></div>
+        </div>
+        <div class="adv-grid">
+          <div class="num"><span>Login username</span><input id="login_user" type="text" class="tin" data-secret="1" autocomplete="off" spellcheck="false"></div>
+          <div class="num"><span>Login password</span><input id="login_pass" type="password" class="tin" data-secret="1" autocomplete="new-password"></div>
+          <button class="btn" id="clearauth" type="button">Clear sign-in fields</button>
+        </div>
+      </div>
+
+      <div class="agroup">
+        <label class="sw"><span class="switch"><input type="checkbox" id="remember" checked><span class="track"></span></span>Remember these settings in this browser <span class="hint">(everything except the sign-in fields)</span></label>
       </div>
     </details>
 
@@ -1126,6 +1434,25 @@ PAGE = """<!DOCTYPE html>
 </div>
 
 <script>
+  // ------------------------------------------------------------------
+  // What may be remembered, and what may never be.
+  //
+  // SECRET_FIELDS is the same list the server keeps in scanauth.SECRET_FIELDS.
+  // Nothing on it is written to localStorage, put in a URL, or kept in the
+  // re-run state - a re-run reads the live form, so if the fields have been
+  // cleared it simply asks again. Everything else is a scan setting and is
+  // remembered between visits.
+  // ------------------------------------------------------------------
+  var SECRET_FIELDS = ["auth_user","auth_pass","cookies","login_url",
+                       "login_user_selector","login_pass_selector",
+                       "login_submit_selector","login_user","login_pass"];
+  var SETTING_FIELDS = ["samples","maxpages","concurrency","throttling","down_kbps",
+                        "up_kbps","latency_ms","device_profile","viewport_width",
+                        "viewport_height","dpr","user_agent"];
+  var PREFS_KEY = "scan.settings.v1";
+
+  function val(id){ var el = document.getElementById(id); return el ? el.value.trim() : ""; }
+
   // device segmented control
   let device = "desktop";
   document.querySelectorAll("#device button").forEach(function(b){
@@ -1147,6 +1474,56 @@ PAGE = """<!DOCTYPE html>
   });
   syncStdWrap();
 
+  // custom connection inputs appear only for the custom preset
+  var throttleSel = document.getElementById("throttling");
+  function syncThrottle(){
+    var custom = throttleSel.value === "custom" ? "flex" : "none";
+    ["customdown","customup","customlat"].forEach(function(id){
+      document.getElementById(id).style.display = custom;
+    });
+  }
+  throttleSel.onchange = syncThrottle;
+
+  // ---- saved settings ----------------------------------------------
+  // Only SETTING_FIELDS are ever written. The sign-in fields are not on that
+  // list, are not read here, and are not written here - by construction, not
+  // by filtering something that already contains them.
+  function saveSettings(){
+    var el = document.getElementById("remember");
+    try {
+      if(!el || !el.checked){ localStorage.removeItem(PREFS_KEY); return; }
+      var out = { device: device, deep: document.getElementById("deep").checked };
+      SETTING_FIELDS.forEach(function(id){ out[id] = val(id); });
+      localStorage.setItem(PREFS_KEY, JSON.stringify(out));
+    } catch(err){ /* private mode, quota, disabled storage: settings just don't stick */ }
+  }
+
+  function loadSettings(){
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(PREFS_KEY) || "null"); } catch(err){ }
+    if(!saved){ syncThrottle(); return; }
+    SETTING_FIELDS.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el && typeof saved[id] === "string" && saved[id] !== ""){ el.value = saved[id]; }
+    });
+    if(typeof saved.deep === "boolean"){ document.getElementById("deep").checked = saved.deep; }
+    if(saved.device === "mobile" || saved.device === "desktop"){
+      device = saved.device;
+      document.querySelectorAll("#device button").forEach(function(x){
+        x.classList.toggle("on", x.dataset.v === device); });
+    }
+    syncThrottle();
+  }
+
+  document.getElementById("clearauth").onclick = function(){
+    SECRET_FIELDS.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el){ el.value = ""; }
+    });
+  };
+
+  loadSettings();
+
   var logwrap = document.getElementById("logwrap");
   var logEl = document.getElementById("log");
   var go = document.getElementById("go");
@@ -1166,6 +1543,12 @@ PAGE = """<!DOCTYPE html>
     sa.max = j.samples;   if(+sa.value > j.samples){ sa.value = j.samples; }
     var pa = document.getElementById("concurrency");
     pa.max = j.parallel;  if(+pa.value > j.parallel){ pa.value = j.parallel; }
+    if(j.scan_auth_enabled === false){
+      // This deployment does not accept third-party credentials at all, so
+      // don't offer fields whose contents it would only refuse.
+      var box = document.querySelector(".agroup.secret");
+      if(box){ box.style.display = "none"; }
+    }
   }).catch(function(){ /* the caps still apply server-side */ });
 
   var statebox = document.getElementById("statebox");
@@ -1285,29 +1668,76 @@ PAGE = """<!DOCTYPE html>
     setQueueBadge(null);
     document.getElementById("results").style.display = "none";
     setBusy(true);
+    // Only the URL is kept: the re-check and "scan this page instead" buttons
+    // replay the form as it stands, they do not carry a saved copy of it - and
+    // a saved copy is exactly what must not exist for the sign-in fields.
     lastRequest = { url: url };
+    saveSettings();
 
-    var qs = new URLSearchParams({ url:url, device:device, deep:deep, samples:samples,
-      max_pages:maxpages, concurrency:concurrency, security:security, categories:lh.join(","),
-      a11y:a11y, standards:stds.join(",") });
-    var es = new EventSource("/scan?" + qs.toString());
+    // The scan settings go in the POST body, not a query string: the sign-in
+    // fields below would otherwise be written to the server's access log and
+    // to this browser's own history.
+    var body = { url:url, device:device, deep:deep, samples:samples,
+      max_pages:maxpages, concurrency:concurrency, security:security,
+      categories:lh.join(","), a11y:a11y, standards:stds.join(",") };
+    SETTING_FIELDS.forEach(function(id){
+      if(id === "samples" || id === "maxpages" || id === "concurrency"){ return; }
+      var v = val(id); if(v !== ""){ body[id] = v; }
+    });
+    SECRET_FIELDS.forEach(function(id){
+      var v = val(id); if(v !== ""){ body[id] = v; }
+    });
 
-    es.onmessage = function(e){ logEl.textContent += e.data + "\\n"; logEl.scrollTop = logEl.scrollHeight; };
+    var es = null;
 
-    // the scan is on the queue - the browser now follows it, it is not running yet
-    es.addEventListener("accepted", function(e){
-      try {
-        var d = JSON.parse(e.data);
-        jobId = d.job;
-        if(d.capped && d.capped.length){
+    fetch("/scan", {method:"POST", headers:{"Content-Type":"application/json"},
+                    body: JSON.stringify(body)})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); })
+      .then(function(res){
+        // Whatever happens next, this page is done holding the passwords.
+        body = null;
+        if(!res.ok){ onRejected(res.body || {}); return; }
+        jobId = res.body.job;
+        if(res.body.capped && res.body.capped.length){
           showNotice("Adjusted to this server's limits",
                      "Your request asked for more than this deployment allows, so it was " +
-                     "trimmed to max pages " + d.params.max_pages + ", samples " +
-                     d.params.samples + ", parallel " + d.params.concurrency + ".", false);
+                     "trimmed to max pages " + res.body.params.max_pages + ", samples " +
+                     res.body.params.samples + ", parallel " + res.body.params.concurrency + ".",
+                     false);
         }
-      } catch(err){ /* keep streaming regardless */ }
-      statusEl.textContent = "Queued\u2026";
-    });
+        statusEl.textContent = "Queued\u2026";
+        es = new EventSource(res.body.stream);
+        wire(es);
+      })
+      .catch(function(){
+        body = null;
+        reset(); spin.style.display = "none"; setQueueBadge(null);
+        statusEl.textContent = "Could not reach the server.";
+        showNotice("Could not reach the server",
+                   "The scan was not submitted. Check the connection and try again.", true);
+        logwrap.style.display = "none";
+      });
+
+    // refused before anything was queued: rate limit, full queue, or the
+    // domain-ownership gate for a multi-page audit
+    function onRejected(d){
+      if(es){ es.close(); }
+      reset(); spin.style.display = "none"; setQueueBadge(null);
+      var titles = { queue_full: "The queue is full",
+                     hourly: "Scan limit reached",
+                     concurrent: "A scan of yours is already running",
+                     unverified: "Verify this domain first",
+                     invalid: "That request can\u2019t be scanned" };
+      statusEl.textContent = titles[d.reason] || "Not accepted";
+      showNotice(titles[d.reason] || "Not accepted",
+                 d.message || "The scan was not accepted.", true);
+      if(d.verification){ showVerification(d.verification); }
+      logwrap.style.display = "none";
+    }
+
+    function wire(es){
+
+    es.onmessage = function(e){ logEl.textContent += e.data + "\\n"; logEl.scrollTop = logEl.scrollHeight; };
 
     es.addEventListener("queued", function(e){
       var d = {};
@@ -1321,22 +1751,12 @@ PAGE = """<!DOCTYPE html>
       setQueueBadge("Running");
     });
 
-    // refused before anything was queued: rate limit, full queue, or the
-    // domain-ownership gate for a multi-page audit
+    // the stream itself can still refuse: a job that expired before the
+    // browser got back to it
     es.addEventListener("rejected", function(e){
-      es.close(); reset(); spin.style.display = "none"; setQueueBadge(null);
       var d = {};
       try { d = JSON.parse(e.data); } catch(err){ }
-      var titles = { queue_full: "The queue is full",
-                     hourly: "Scan limit reached",
-                     concurrent: "A scan of yours is already running",
-                     unverified: "Verify this domain first",
-                     invalid: "That request can\u2019t be scanned" };
-      statusEl.textContent = titles[d.reason] || "Not accepted";
-      showNotice(titles[d.reason] || "Not accepted",
-                 d.message || "The scan was not accepted.", true);
-      if(d.verification){ showVerification(d.verification); }
-      logwrap.style.display = "none";
+      onRejected(d);
     });
 
     es.addEventListener("done", function(e){
@@ -1415,10 +1835,37 @@ PAGE = """<!DOCTYPE html>
     });
     es.onerror = function(){ es.close(); reset(); spin.style.display="none"; setQueueBadge(null); };
 
+    }   // wire()
+
     function reset(){ setBusy(false); }
   };
 </script>
 </body></html>"""
+
+
+def _options(choices, selected=""):
+    """<option> markup for a scanconfig choice list.
+
+    The two selects are built from `scanconfig` rather than typed out here, so
+    a preset the server understands and one the form offers cannot drift apart.
+    """
+    import html as _html
+
+    out = []
+    for value, label in choices:
+        mark = " selected" if value == selected else ""
+        out.append(f'<option value="{_html.escape(value)}"{mark}>'
+                   f'{_html.escape(label)}</option>')
+    return "".join(out)
+
+
+PAGE = PAGE.replace(
+    "<!--THROTTLE_OPTIONS-->",
+    _options(scanconfig.throttling_choices(), scanconfig.DEFAULT_THROTTLING))
+PAGE = PAGE.replace(
+    "<!--DEVICE_OPTIONS-->",
+    '<option value="">Match the Device setting above</option>'
+    + _options(scanconfig.device_choices()))
 
 
 if __name__ == "__main__":

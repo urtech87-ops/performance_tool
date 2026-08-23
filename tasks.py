@@ -7,32 +7,44 @@ taken. Nothing in this module inspects, tunes or post-processes a scan: it
 hands the parameters over, streams the pipeline's log lines to whichever sink
 the backend provided, and reports the run folder back.
 
+It is also where a scan's credentials end: `run_scan_job` wipes them in a
+`finally`, whether the scan succeeded, failed or blew up, so a long-lived
+worker never carries one client's password into the next client's scan.
+
 Kept separate from dashboard.py so an RQ worker can import it without ever
 importing Flask's routes.
 """
 
 import dashboard
+import scanconfig
 
 
-def run_scan_job(params, log):
+def run_scan_job(params, log, credentials=None):
     """Run the pipeline and return the payload the UI needs.
 
     `params` is the sanitized dict from guardrails.sanitize_params; `log` is a
-    callable taking one line of text.
+    callable taking one line of text. `credentials` - when the scan has any -
+    arrives separately from `params` and never joins it: see `jobqueue`.
     """
-    run_name = dashboard.run_pipeline(
-        params["url"],
-        params["device"],
-        params["samples"],
-        params["deep"],
-        params["max_pages"],
-        params["concurrency"],
-        params["security"],
-        params["categories"],
-        log,
-        a11y=params.get("a11y", False),
-        standards=params.get("standards") or None,
-    )
+    try:
+        run_name = dashboard.run_pipeline(
+            params["url"],
+            params["device"],
+            params["samples"],
+            params["deep"],
+            params["max_pages"],
+            params["concurrency"],
+            params["security"],
+            params["categories"],
+            log,
+            a11y=params.get("a11y", False),
+            standards=params.get("standards") or None,
+            scan_config=scanconfig.ScanConfig.from_dict(params.get("scan_config")),
+            credentials=credentials or None,
+        )
+    finally:
+        if credentials is not None:
+            credentials.scrub()
     if not run_name:
         raise RuntimeError("the scan produced no run folder")
     # The payload the browser has always received on `event: done`, plus - for
@@ -80,8 +92,19 @@ def run_scan_job_rq(job_id, params):
     backend = _worker_backend()
     sink = backend.sink(job_id)
     backend.mark_running(job_id)
+    # Taking the credentials deletes them from Redis: from here they exist only
+    # in this process, and run_scan_job wipes them when the scan ends.
+    credentials = backend.take_credentials(job_id)
+    if not credentials and backend.credentials_expected(job_id):
+        # They are held for a bounded time, and this job outlived it. Say so:
+        # a scan of the logged-out site is a different scan, not a worse one,
+        # and it must not be handed over as though it were the one requested.
+        sink.append("This scan was submitted with credentials, but they were no "
+                    "longer available when a worker picked it up. Pages behind "
+                    "the login will be recorded as unmeasured - submit it again "
+                    "to scan as a signed-in user.")
     try:
-        result = run_scan_job(params, sink)
+        result = run_scan_job(params, sink, credentials=credentials)
     except Exception as exc:                                        # noqa: BLE001
         sink.append(f"ERROR: {exc}")
         backend.finish(job_id, FAILED, error=str(exc))

@@ -4,6 +4,11 @@ Enter a URL, pick Desktop or Mobile, get one consolidated report: Lighthouse
 scores and core metrics, itemized fix recommendations, plus optional passive
 security checks and an axe-core accessibility-standards audit.
 
+Under **Advanced options** the scan can also be shaped to match the real world:
+a connection preset (or a custom one), a named handset, a viewport and a
+User-Agent - and, for a site that is not public, HTTP Basic credentials, a
+pasted cookie jar, or a scripted form login.
+
 The scanning engine (`run_pipeline`, the scoring, and every report builder) is
 unchanged by anything described below. What this README covers is the serving
 layer: how scans are queued, how many run at once, and what a single anonymous
@@ -116,6 +121,91 @@ pipeline never receives more than these.
 When a request is trimmed, the UI says so instead of silently shrinking the
 scan.
 
+---
+
+## Scan conditions
+
+Everything here is an *input* to the scanners: it becomes flags on the
+`lighthouse` and `unlighthouse-ci` command lines. No score, metric or report is
+computed differently - Lighthouse simply measures a different situation, and
+the report says what that situation was. Leave it all alone and a scan runs the
+exact commands it always did.
+
+**Connection.** `Lighthouse default` (its own simulated Slow 4G, the setting
+every score you have seen so far was measured on), `Unthrottled`, `Broadband
+Fast`, `Broadband`, `LTE`, `4G`, `3G`, or a custom down/up/latency. Presets
+throttle the network with Chrome's own shaping (`--throttling-method=devtools`)
+and leave the CPU alone: they emulate a connection, not a slower phone.
+
+**Device.** Desktop and Mobile as before, plus named handsets - iPhone SE,
+iPhone 12/13/14, iPhone 14 Pro/15/16, iPhone 15 Pro Max, Pixel 5, Pixel 7,
+Pixel 8 Pro. A handset sets the form factor, the screen and the User-Agent
+together, and the crawl follows it, so picking a Pixel really does audit the
+site as a phone (the run folder is named `-mobile-` accordingly).
+
+**Viewport and User-Agent.** An explicit width, height and device pixel ratio
+override whatever the profile would have used, and Chrome's own window is sized
+to match. A User-Agent override replaces the device's. Every value is clamped
+server-side, and a User-Agent cannot carry a newline into a header.
+
+Comparing two runs is only meaningful when these match - a 3G Pixel and an
+unthrottled desktop are not two measurements of the same thing.
+
+## Authenticated scanning
+
+For staging servers, member areas and consent-walled sites. Three methods,
+combinable:
+
+* **HTTP Basic** - a username and password, sent as an `Authorization` header
+  to Lighthouse and as `--auth` to the crawler.
+* **Cookies** - pasted as `name=value; other=value`, injected before the first
+  page loads.
+* **Scripted form login** - a login URL and CSS selectors for the username,
+  password and submit controls. Before the crawl, `login_playwright_runner.js`
+  opens that form in a real browser, signs in, and the session cookies it
+  produces travel with every page of the scan.
+
+### What happens to the credentials
+
+They are used in memory, for one scan, and are not stored anywhere:
+
+* They are **never accepted from a query string.** The form submits them in a
+  `POST /scan` body and the browser then follows the job with an EventSource on
+  `/scan/stream/<job>?t=<token>`, so nothing secret reaches an access log, a
+  `Referer` header, or the browser's own history. `GET /scan` - the original
+  entry point - has no door for them at all.
+* They are **not part of a scan's parameters.** `guardrails.sanitize_params`
+  never returns them, so they cannot reach the job record, the run folder,
+  `run-status.json`, a report, or the payload the browser is sent back.
+* They are **never logged.** Every line the pipeline emits passes through a
+  redactor first, so a command, a stack trace or a tool's own output cannot
+  echo one back. The crawl command still appears in the log - with `[redacted]`
+  where the values were.
+* They are **not saved as a preset.** The "remember these settings" box writes
+  only the scan-condition fields to `localStorage`; the sign-in fields are not
+  on that list, so a re-run asks for them again.
+* They are **wiped when the scan ends** - in a `finally`, whether it succeeded,
+  failed or raised. Secrets are held in `bytearray`s so the wipe is real rather
+  than a rebinding.
+
+Two things are worth knowing rather than discovering:
+
+* The `lighthouse` and `unlighthouse-ci` processes are given the credentials as
+  **command-line arguments**, because neither tool accepts a header any other
+  way and the alternative is a JSON file on disk. Those processes are ours and
+  short-lived, but anyone who can read `/proc` on the scanning host as the same
+  user can see them. The scripted login has no such exposure: it takes its
+  configuration on stdin.
+* With the **Redis queue**, credentials sit in their own short-TTL key for the
+  length of the queue wait, apart from the job record and from the RQ job's
+  arguments; the worker takes that key with `GETDEL` - one read, then it is
+  gone. Run that Redis with persistence off (`--save "" --appendonly no`) if
+  you accept credentials.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `ALLOW_SCAN_AUTH` | `1` | `0` refuses credentials outright and hides the sign-in fields. |
+
 ### Domain-ownership gate
 
 Off by default (internal use). Turn it on for a public deployment:
@@ -193,17 +283,24 @@ derived from it.
 
 ## How a scan flows
 
-1. `GET /scan?…` - the browser opens an SSE stream.
+1. `POST /scan` - the browser submits the settings in the request body and
+   gets back `{job, capped, params, stream}`. It then opens an SSE stream on
+   the `stream` URL, which carries a job id and a session-bound token and
+   nothing else. (`GET /scan?…` still does both in one request, for a scan
+   with no credentials - it is the original entry point and is unchanged.)
 2. The request is sanitized and capped (`guardrails.sanitize_params`), rate
-   limited, and put through the ownership gate.
-3. It is enqueued (`jobqueue`) and the response starts streaming:
+   limited, and put through the ownership gate. Credentials come in through
+   `guardrails.extract_credentials`, a separate door that reads the body only.
+3. It is enqueued (`jobqueue`) - the credentials beside the job, never inside
+   it - and the response starts streaming:
    `accepted` → `queued` (with position) → `running` → log lines → `done` /
    `fail`. A refusal comes back as a single `rejected` event carrying a
    reason (`queue_full`, `hourly`, `concurrent`, `unverified`, `invalid`) and,
    for `unverified`, the verification instructions. Refusals also set an
-   `X-Scan-Rejected` header.
+   `X-Scan-Rejected` header; a refused POST answers 4xx with the same payload.
 4. A worker picks the job up and calls `run_pipeline` with exactly the
-   arguments it has always taken (`tasks.run_scan_job`). The `done` payload
+   arguments it has always taken, plus the scan conditions and (if any) the
+   credentials (`tasks.run_scan_job`), which it wipes when the scan ends. The `done` payload
    carries the run's `status`, `coverage` and (when it fell short) the
    plain-language `notice`, so the browser can state what the report covers.
    A job that died without leaving a run folder gets the same treatment: its
@@ -232,3 +329,15 @@ stubbed at `run_pipeline`, and the RQ path runs against `fakeredis`.
 * `tests/test_runstate.py` - the ledger itself: what counts as blocked rather
   than broken, when a run is partial rather than failed, and the words each
   condition is given.
+* `tests/test_scan_options.py` - every throttling preset, handset, viewport and
+  User-Agent as it reaches the `lighthouse` and `unlighthouse-ci` command
+  lines, and the guarantee that an unconfigured scan still runs the command it
+  always ran.
+* `tests/test_scan_auth.py` - Basic auth and cookies reaching both scanners,
+  the scripted login taking its password on stdin rather than argv, and its
+  session cookies travelling on into the scan.
+* `tests/test_scan_auth_privacy.py` - the rule credentials live by, checked as
+  searches rather than assertions about particular fields: no file in the run
+  folder, no log line, no ledger entry, no job record, no streamed event, no
+  saved setting and no URL may contain one - and, as the counterweight, that
+  the scanners really were given them.

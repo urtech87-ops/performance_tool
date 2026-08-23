@@ -107,6 +107,12 @@ class Settings:
         self.CAP_SAMPLES = _int(env.get("CAP_SAMPLES"), 2, 1, 5)
         self.CAP_PARALLEL = _int(env.get("CAP_PARALLEL"), 3, 1, 6)
 
+        # ---- authenticated scanning ------------------------------------
+        # Credentials are held in memory for one scan and never written
+        # anywhere (see scanauth.py). A deployment that would rather not be
+        # handed third-party passwords at all can refuse them outright.
+        self.ALLOW_SCAN_AUTH = _bool(env.get("ALLOW_SCAN_AUTH"), True)
+
         # ---- domain-ownership gate for deep multi-page scans -----------
         self.REQUIRE_DOMAIN_VERIFICATION = _bool(
             env.get("REQUIRE_DOMAIN_VERIFICATION"), False)

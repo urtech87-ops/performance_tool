@@ -9,6 +9,12 @@
  *     node axe_playwright_runner.js --url https://example.com/ \
  *          --tags wcag2a,wcag2aa --timeout 150
  *
+ * With --browser-stdin, a JSON object of Playwright newContext() options is
+ * read from stdin and used to build the browsing context: cookies, HTTP
+ * credentials, a device viewport, a User-Agent. It arrives on stdin rather
+ * than as an argument because it can carry somebody's password, and a command
+ * line is readable by every process on the machine.
+ *
  * Why Playwright instead of @axe-core/cli: the CLI drives Chrome through
  * ChromeDriver, and the npm `chromedriver` package is versioned independently
  * of the Chrome installed on the machine. Chrome auto-updates, the driver does
@@ -42,9 +48,41 @@ function arg(name, fallback) {
   return inline ? inline.slice(flag.length + 1) : fallback;
 }
 
+function has(name) {
+  const flag = `--${name}`;
+  return process.argv.some((a) => a === flag || a.startsWith(`${flag}=`));
+}
+
 function die(message, code) {
   process.stderr.write(`${message}\n`);
   process.exit(code === undefined ? 1 : code);
+}
+
+function readStdin() {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (chunk) => { data += chunk; });
+    process.stdin.on('end', () => resolve(data));
+    process.stdin.on('error', reject);
+  });
+}
+
+/**
+ * The browsing context this page is audited in. `cookies` and
+ * `httpCredentials` are lifted out: the first needs context.addCookies() after
+ * the context exists, the second is a newContext() option like the rest.
+ */
+async function browserOptions(url) {
+  if (!has('browser-stdin')) return { options: {}, cookies: [] };
+  let config;
+  try {
+    config = JSON.parse(await readStdin());
+  } catch (err) {
+    die('browser context on stdin is not valid JSON');
+  }
+  const { cookies, ...options } = config || {};
+  return { options, cookies: Array.isArray(cookies) ? cookies : [] };
 }
 
 function load(name) {
@@ -109,7 +147,16 @@ async function main() {
   }
 
   try {
-    const context = await browser.newContext({ ignoreHTTPSErrors: true });
+    const { options, cookies } = await browserOptions(url);
+    const context = await browser.newContext(
+      Object.assign({ ignoreHTTPSErrors: true }, options)
+    );
+    if (cookies.length) {
+      const origin = new URL(url).origin;
+      await context
+        .addCookies(cookies.map((c) => Object.assign({ url: origin }, c)))
+        .catch(() => {});
+    }
     const page = await context.newPage();
     page.setDefaultTimeout(timeout);
     page.setDefaultNavigationTimeout(timeout);

@@ -35,7 +35,7 @@ def crawl(monkeypatch):
     """A crawl that discovers ROUTES without running unlighthouse."""
     monkeypatch.setattr(dashboard, "DRYRUN", False)
 
-    def fake_run_stream(cmd, cwd, log, env=None):
+    def fake_run_stream(cmd, cwd, log, env=None, **kw):
         d = Path(cwd) / ".unlighthouse"
         d.mkdir(parents=True, exist_ok=True)
         (d / "ci-result.json").write_text(json.dumps({"routes": ROUTES}), encoding="utf-8")

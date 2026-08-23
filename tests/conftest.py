@@ -3,6 +3,8 @@
 import json
 import subprocess
 import sys
+import time
+import weakref
 from pathlib import Path
 
 import pytest
@@ -18,6 +20,61 @@ import jobqueue  # noqa: E402
 import verification  # noqa: E402
 
 
+# Every inline queue built during a test, so none can outlive it. Several
+# tests build their own backend rather than using the fixture's, and its worker
+# threads are daemons that keep pulling from it long after the test returns.
+_LIVE_QUEUES = weakref.WeakSet()
+_inline_init = jobqueue.InlineBackend.__init__
+
+
+def _tracked_init(self, *args, **kwargs):
+    _inline_init(self, *args, **kwargs)
+    _LIVE_QUEUES.add(self)
+
+
+jobqueue.InlineBackend.__init__ = _tracked_init
+
+
+def drain(backend, timeout=10.0):
+    """End a test's queue: drop what has not started, wait for what has.
+
+    The inline queue runs jobs on daemon threads. A test that enqueues a scan
+    and does not follow it to the end leaves that job waiting - and this
+    teardown runs *after* pytest has undone the test's monkeypatches, so a
+    worker picking it up then would call the real `run_pipeline` against the
+    test's fake URL: a live `npx` against a domain that does not exist, writing
+    into the repository's own runs/ folder and racing whatever test is running
+    by then.
+
+    So jobs still queued are cancelled under the backend's own lock (where no
+    worker can have taken one yet), and jobs already running - which started
+    while the test's stubs were in place - are waited out.
+
+    Called from `pytest_runtest_call` below rather than from a fixture, because
+    it has to happen while the test's own stubs are still installed: fixture
+    finalizers run after `monkeypatch` has already put the real `run_pipeline`
+    back.
+    """
+    jobs = getattr(backend, "_jobs", None)
+    if jobs is None:
+        return
+    with backend._cond:
+        for job_id in list(backend._pending):
+            record = jobs.get(job_id)
+            if record is not None:
+                record["state"] = jobqueue.FAILED
+                record["error"] = "cancelled when the test ended"
+                record.pop("credentials", None)
+        backend._pending.clear()
+        backend._cond.notify_all()
+    deadline = time.time() + timeout
+    for job_id in list(jobs):
+        while time.time() < deadline:
+            if backend.state(job_id)["state"] in jobqueue.TERMINAL:
+                break
+            backend.wait(job_id, 0.05)
+
+
 @pytest.fixture(autouse=True)
 def fresh_serving_layer():
     """A clean queue, rate-limit ledger and verification cache per test.
@@ -26,12 +83,29 @@ def fresh_serving_layer():
     without this one test's scans would count against the next one's budget.
     """
     config.reload()
-    jobqueue.set_backend(jobqueue.InlineBackend())
+    backend = jobqueue.InlineBackend()
+    jobqueue.set_backend(backend)
     verification.set_cache(verification.MemoryVerificationCache())
     dashboard.reset_services()
     yield
     jobqueue.set_backend(None)
     dashboard.reset_services()
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_call(item):
+    """Empty the queue the moment the test body returns.
+
+    This is the last point at which the test's monkeypatches are still in
+    place, which is exactly what `drain` needs - see its docstring.
+    """
+    yield
+    for backend in list(_LIVE_QUEUES):
+        try:
+            drain(backend)
+        except Exception:                                         # noqa: BLE001
+            pass
+    _LIVE_QUEUES.clear()
 
 
 def violation(rule_id, impact, tags, help_text="", nodes=1, node_html="<img src=x>"):

@@ -74,7 +74,7 @@ def test_pipeline_skips_accessibility_by_default(runs_dir, no_crawl, captured_sc
 def test_pipeline_honours_max_pages_and_parallel(runs_dir, no_crawl, captured_scan, monkeypatch):
     routes = [{"path": f"/p{i}/"} for i in range(9)]
 
-    def fake_run_stream(cmd, cwd, log, env=None):
+    def fake_run_stream(cmd, cwd, log, env=None, **kw):
         import json
         from pathlib import Path
         d = Path(cwd) / ".unlighthouse"

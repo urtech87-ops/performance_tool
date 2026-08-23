@@ -17,13 +17,34 @@ Two interchangeable backends:
 
 Both expose the same surface:
 
-    enqueue(params, client) -> job_id          (raises QueueFull)
+    enqueue(params, client, credentials) -> job_id      (raises QueueFull)
     state(job_id)           -> dict            state/position/result/error
     logs(job_id, cursor)    -> (lines, cursor)
     wait(job_id, timeout)                      block until there may be more
     depth()                 -> queued jobs
 
 Job states: queued -> running -> done | failed.
+
+Credentials travel apart from the job
+-------------------------------------
+`params` is the public description of a scan: it is stored in the job record,
+read back by any web process, and echoed to the browser. A scan's credentials
+are none of those things, so they never go in it.
+
+  * Inline, the queue holds its own copy in this process's memory and hands it
+    straight to the worker thread; `state()` cannot return it, because
+    `state()` builds its answer field by field. It is a copy because the web
+    request wipes its own as soon as the job is queued, and inline that is the
+    same process.
+  * With Redis, the credentials live in their own key with a short TTL, apart
+    from the job hash and from the RQ job's own arguments. The worker takes
+    that key with GETDEL - one read, then it is gone - so the window in which
+    they exist at all is the time the job spends waiting for a worker.
+
+    That window is real: a Redis with persistence enabled could flush the key
+    to its RDB/AOF before the worker takes it. Run the queue's Redis with
+    persistence off (`--save "" --appendonly no`) if you accept credentials,
+    or set ALLOW_SCAN_AUTH=0 and don't.
 """
 
 import json
@@ -44,6 +65,15 @@ class QueueFull(Exception):
 
 def new_job_id():
     return uuid.uuid4().hex[:16]
+
+
+def _detach(credentials):
+    """A private copy of `credentials`, so the caller can wipe its own."""
+    if not credentials:
+        return None
+    import scanauth
+
+    return scanauth.Credentials.from_payload(credentials.payload())
 
 
 # --------------------------------------------------------------------------
@@ -96,19 +126,27 @@ class InlineBackend:
     def _run(self, job_id):
         import tasks  # imported late: tasks imports dashboard, which imports us
         sink = InlineLogSink(self, job_id)
+        credentials = self.take_credentials(job_id)
         try:
-            result = tasks.run_scan_job(self._jobs[job_id]["params"], sink)
+            result = tasks.run_scan_job(self._jobs[job_id]["params"], sink,
+                                        credentials=credentials)
             self.finish(job_id, DONE, result=result)
         except Exception as exc:                                  # noqa: BLE001
             sink.append(f"ERROR: {exc}")
             self.finish(job_id, FAILED, error=str(exc))
+
+    def take_credentials(self, job_id):
+        """The job's credentials, removed from the queue as they are read."""
+        with self._cond:
+            record = self._jobs.get(job_id)
+            return record.pop("credentials", None) if record else None
 
     # -- API ------------------------------------------------------------
     def depth(self):
         with self._cond:
             return len(self._pending)
 
-    def enqueue(self, params, client=None, job_id=None):
+    def enqueue(self, params, client=None, job_id=None, credentials=None):
         with self._cond:
             if len(self._pending) >= self.max_depth:
                 raise QueueFull(f"{len(self._pending)} scans already waiting")
@@ -117,6 +155,11 @@ class InlineBackend:
                 "id": job_id, "state": QUEUED, "params": dict(params),
                 "client": client, "created_at": time.time(), "started_at": None,
                 "log": [], "result": None, "error": None,
+                # A detached copy, held only until the worker thread takes it
+                # and never part of anything state() or logs() returns. It is a
+                # copy because the web request wipes its own the moment the job
+                # is queued, and inline that is the same process.
+                "credentials": _detach(credentials),
             }
             self._pending.append(job_id)
             self._cond.notify_all()
@@ -233,7 +276,7 @@ class RedisQueueBackend:
     def depth(self):
         return self.queue.count
 
-    def enqueue(self, params, client=None, job_id=None):
+    def enqueue(self, params, client=None, job_id=None, credentials=None):
         if self.depth() >= self.max_depth:
             raise QueueFull(f"{self.depth()} scans already waiting")
         job_id = job_id or new_job_id()
@@ -243,12 +286,61 @@ class RedisQueueBackend:
         pipe.hset(_key(job_id), mapping=record)
         pipe.expire(_key(job_id), self.ttl)
         pipe.execute()
+        # Credentials go in their own key, never in the record above and never
+        # in the RQ job's arguments: the record is kept for JOB_TTL and read by
+        # every web process, and neither is a place for someone's password.
+        # This key outlives only the queue wait - see the module docstring.
+        if credentials:
+            # Long enough for a realistic queue wait, short enough that a job
+            # nobody ever runs does not leave a password sitting there. A job
+            # that outlives it is told so rather than quietly scanning as an
+            # anonymous visitor - see `credentials_expected`.
+            self.r.set(_key(job_id, ":cred"), json.dumps(credentials.payload()),
+                       ex=self.timeout * 2 + 60)
+            self.r.hset(_key(job_id), "auth", "1")
         # The worker imports `tasks` itself - referencing it by name keeps the
         # web process free of any pipeline import.
         self.queue.enqueue("tasks.run_scan_job_rq", job_id, params,
                            job_id=job_id, job_timeout=self.timeout,
                            result_ttl=self.ttl, failure_ttl=self.ttl)
         return job_id
+
+    def take_credentials(self, job_id):
+        """Read the job's credentials and delete them in the same breath.
+
+        Returns a `scanauth.Credentials`, empty when the job has none. After
+        this call the secret is not in Redis any more, whatever happens to the
+        scan.
+        """
+        import scanauth
+
+        key = _key(job_id, ":cred")
+        raw = None
+        try:
+            raw = self.r.getdel(key)          # Redis 6.2+
+        except Exception:                                          # noqa: BLE001
+            pipe = self.r.pipeline()
+            pipe.get(key)
+            pipe.delete(key)
+            raw = pipe.execute()[0]
+        if not raw:
+            return scanauth.Credentials()
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8", "replace")
+        try:
+            return scanauth.Credentials.from_payload(json.loads(raw))
+        except ValueError:
+            return scanauth.Credentials()
+
+    def credentials_expected(self, job_id):
+        """True when this job was queued with credentials.
+
+        Public, not secret: it says that a login was configured, never what it
+        was. A worker compares it with what `take_credentials` actually found,
+        so a scan whose credentials expired in the queue reports that instead
+        of silently measuring the logged-out site.
+        """
+        return self._record(job_id).get("auth") == "1"
 
     def _record(self, job_id):
         raw = self.r.hgetall(_key(job_id))
