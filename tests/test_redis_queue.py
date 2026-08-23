@@ -37,7 +37,8 @@ def stub_pipeline(monkeypatch):
     calls = []
 
     def fake_pipeline(url, device, samples, deep, max_pages, concurrency,
-                      security, categories, log, a11y=False, standards=None):
+                      security, categories, log, a11y=False, standards=None,
+                      scan_config=None, credentials=None):
         calls.append({"url": url, "max_pages": max_pages, "concurrency": concurrency})
         log("crawling " + url)
         return "stub-run"

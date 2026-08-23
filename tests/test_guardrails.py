@@ -33,7 +33,8 @@ def instant_pipeline(monkeypatch):
     calls = []
 
     def fake_pipeline(url, device, samples, deep, max_pages, concurrency,
-                      security, categories, log, a11y=False, standards=None):
+                      security, categories, log, a11y=False, standards=None,
+                      scan_config=None, credentials=None):
         calls.append({"url": url, "samples": samples, "max_pages": max_pages,
                       "concurrency": concurrency})
         return "run-folder"
@@ -152,7 +153,7 @@ class FullQueue:
     def __init__(self):
         self.attempts = 0
 
-    def enqueue(self, params, client=None, job_id=None):
+    def enqueue(self, params, client=None, job_id=None, credentials=None):
         self.attempts += 1
         raise jobqueue.QueueFull("full")
 

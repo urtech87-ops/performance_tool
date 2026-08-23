@@ -6,7 +6,10 @@ Two things stand between an anonymous request and a worker:
 
   * `sanitize_params` - the only place scan parameters are read from a client.
     Every numeric knob is clamped to a server-side cap, so what the client
-    sends can never make a scan bigger than the deployment allows.
+    sends can never make a scan bigger than the deployment allows. Its output
+    is also the only thing that gets persisted about a scan, which is why no
+    credential may ever appear in it - see `extract_credentials`, which is a
+    separate door for exactly that reason.
   * `RateLimiter`     - per-IP and per-session budgets: scans per hour and
     concurrent scans per client.
 
@@ -19,6 +22,8 @@ import re
 import time
 from urllib.parse import urlparse
 
+import scanauth
+import scanconfig
 from config import settings
 
 VALID_CATEGORIES = ["performance", "accessibility", "best-practices", "seo"]
@@ -34,6 +39,27 @@ def _int(raw, default):
         return int(str(raw).strip())
     except (TypeError, ValueError, AttributeError):
         return default
+
+
+# Truthy spellings, because the same parameters arrive both as query-string
+# text ("1") and as JSON from the form's POST (1, true). Reading only one of
+# those is how a checked box silently turns into an unchecked one.
+_TRUE = ("1", "true", "yes", "on")
+
+
+def _flag(raw, default=False):
+    if raw is None:
+        return default
+    if isinstance(raw, bool):
+        return raw
+    return str(raw).strip().lower() in _TRUE
+
+
+def _csv(raw):
+    """A comma-separated field, which JSON may present as a real list."""
+    if isinstance(raw, (list, tuple)):
+        return ",".join(str(item) for item in raw)
+    return str(raw or "")
 
 
 def normalize_url(raw):
@@ -87,23 +113,62 @@ def sanitize_params(args):
     max_pages = cap("max_pages", get("max_pages"), DEFAULT_MAX_PAGES, settings.CAP_MAX_PAGES)
     concurrency = cap("parallel", get("concurrency"), DEFAULT_PARALLEL, settings.CAP_PARALLEL)
 
-    raw_cats = (get("categories") or "").split(",")
+    raw_cats = _csv(get("categories")).split(",")
     categories = [c for c in VALID_CATEGORIES if c in raw_cats]  # canonical order, junk dropped
-    standards = re.findall(r"[a-z0-9_]+", (get("standards") or "").lower())[:40]
+    standards = re.findall(r"[a-z0-9_]+", _csv(get("standards")).lower())[:40]
 
     params = {
         "url": url,
         "device": "desktop" if get("device") == "desktop" else "mobile",
         "samples": samples,
-        "deep": get("deep", "1") == "1",
+        "deep": _flag(get("deep"), True),
         "max_pages": max_pages,
         "concurrency": concurrency,
-        "security": get("security", "0") == "1",
+        "security": _flag(get("security")),
         "categories": categories,
-        "a11y": get("a11y", "0") == "1",
+        "a11y": _flag(get("a11y")),
         "standards": standards,
+        # Browser conditions - throttling, device, viewport, User-Agent. All
+        # clamped by scanconfig, and all of it public: this dict is queued,
+        # stored in the job record and echoed back to the browser.
+        "scan_config": scanconfig.ScanConfig.from_request(get).as_dict(),
     }
     return params, None, capped
+
+
+def extract_credentials(body):
+    """Read scan credentials out of a request **body**.
+
+    Deliberately not part of `sanitize_params`: credentials are not scan
+    parameters. They are never queued with the job record, never persisted,
+    never logged, and never accepted from a query string - which is why this
+    takes the parsed body and the caller (`dashboard.scan_submit`) is a POST
+    handler.
+
+    Returns `(credentials, error)`.
+    """
+    if body is None:
+        return scanauth.Credentials(), None
+    if not settings.ALLOW_SCAN_AUTH:
+        if any(str(body.get(name) or "").strip() for name in scanauth.SECRET_FIELDS):
+            return None, ("Authenticated scanning is turned off on this "
+                          "deployment (ALLOW_SCAN_AUTH).")
+        return scanauth.Credentials(), None
+    try:
+        return scanauth.Credentials.from_request(body.get), None
+    except scanauth.CredentialError as exc:
+        return None, str(exc)
+
+
+def has_secrets(data):
+    """True when `data` carries anything from `scanauth.SECRET_FIELDS`.
+
+    A tripwire, used by the tests and cheap enough to call on anything about
+    to be persisted.
+    """
+    if not isinstance(data, dict):
+        return False
+    return any(data.get(name) for name in scanauth.SECRET_FIELDS)
 
 
 def is_multipage_scan(params):

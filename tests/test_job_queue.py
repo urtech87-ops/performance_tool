@@ -29,7 +29,8 @@ def stub_pipeline(monkeypatch):
             self.boom = None
 
         def __call__(self, url, device, samples, deep, max_pages, concurrency,
-                     security, categories, log, a11y=False, standards=None):
+                     security, categories, log, a11y=False, standards=None,
+                     scan_config=None, credentials=None):
             self.calls.append({"url": url, "device": device, "samples": samples,
                                "deep": deep, "max_pages": max_pages,
                                "concurrency": concurrency, "security": security,

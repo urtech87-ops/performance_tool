@@ -54,7 +54,7 @@ def crawl(monkeypatch):
     """A crawl that discovers ROUTES without running unlighthouse."""
     monkeypatch.setattr(dashboard, "DRYRUN", False)
 
-    def fake_run_stream(cmd, cwd, log, env=None):
+    def fake_run_stream(cmd, cwd, log, env=None, **kw):
         d = Path(cwd) / ".unlighthouse"
         d.mkdir(parents=True, exist_ok=True)
         (d / "ci-result.json").write_text(json.dumps({"routes": ROUTES}), encoding="utf-8")
@@ -67,7 +67,7 @@ def crawl(monkeypatch):
 def empty_crawl(monkeypatch):
     """A crawl that discovers nothing at all - a blocked crawler."""
     monkeypatch.setattr(dashboard, "DRYRUN", False)
-    monkeypatch.setattr(dashboard, "run_stream", lambda cmd, cwd, log, env=None: 1)
+    monkeypatch.setattr(dashboard, "run_stream", lambda cmd, cwd, log, env=None, **kw: 1)
 
 
 class Lighthouse:

@@ -635,12 +635,18 @@ def parse_runner_output(stdout):
     return payload, "\n".join(other)
 
 
-def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT, runner=None):
+def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT, runner=None,
+            browser=None):
     """Run axe-core against one URL through the Playwright runner.
 
     Returns (normalized_result|None, seconds, why, output). `output` is the
     runner's own diagnostics - never discarded, so a page that fails can say
     why instead of vanishing into a silent "0 pages analyzed".
+
+    `browser` is an optional dict of Playwright context options - cookies, HTTP
+    credentials, a device viewport, a User-Agent - for a page that is not
+    public or is being measured as a specific device. It goes to the runner on
+    **stdin**, never on the command line, because it can carry a password.
     """
     tags = list(tags or RUN_TAGS)
     out_dir = Path(out_dir)
@@ -651,11 +657,15 @@ def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT, runner=N
            "--url", url,
            "--tags", ",".join(tags),
            "--timeout", str(timeout)]
+    stdin = None
+    if browser:
+        cmd.append("--browser-stdin")
+        stdin = json.dumps(browser)
 
     t0 = time.time()
     try:
         proc = subprocess.run(cmd, cwd=str(out_dir), check=False, timeout=timeout + 30,
-                              env=runner.env, stdout=subprocess.PIPE,
+                              env=runner.env, input=stdin, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, encoding="utf-8", errors="replace")
     except subprocess.TimeoutExpired as e:
         return (None, int(time.time() - t0), "timeout",
@@ -665,6 +675,8 @@ def run_axe(url, out_dir, tags=None, index=0, timeout=PER_PAGE_TIMEOUT, runner=N
                 f"runner not found: {NODE} (Node.js 18+ must be installed and on PATH)", "")
     except Exception as e:
         return None, int(time.time() - t0), f"{type(e).__name__}: {e}", ""
+    finally:
+        stdin = None                    # drop the credential copy immediately
 
     secs = int(time.time() - t0)
     rc = getattr(proc, "returncode", 0)
@@ -796,7 +808,8 @@ def evaluate_standards(findings, selected=None, pages_analyzed=None):
     return out
 
 
-def collect_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=print):
+def collect_site(site_url, urls, standards=None, concurrency=3, work_dir=None, log=print,
+                 browser=None):
     """Run axe over every URL and return the results as data.
 
     Same work `scan_site` has always done - this is only the point where the
@@ -822,7 +835,8 @@ def collect_site(site_url, urls, standards=None, concurrency=3, work_dir=None, l
     seen_output = set()
     from concurrent.futures import ThreadPoolExecutor, as_completed
     with ThreadPoolExecutor(max_workers=max(1, int(concurrency or 1))) as pool:
-        futures = {pool.submit(run_axe, u, work_dir, tags, i, runner=runner): u
+        futures = {pool.submit(run_axe, u, work_dir, tags, i, runner=runner,
+                               browser=browser): u
                    for i, u in enumerate(urls, 1)}
         for n, fut in enumerate(as_completed(futures), 1):
             u = futures[fut]
