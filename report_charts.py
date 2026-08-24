@@ -17,31 +17,28 @@ give at 0% and 100%.
 import html
 import math
 
-BAND_VAR = {"good": "--good", "avg": "--avg", "poor": "--poor", "na": "--na"}
-BAND_FALLBACK = {"good": "#0f8a4d", "avg": "#c07a00", "poor": "#cf2f3f", "na": "#94a3b8"}
+import design_tokens
+from design_tokens import var as _var
 
-SEVERITY_VAR = {
-    "critical": "--sev-critical",
-    "serious": "--sev-serious",
-    "moderate": "--sev-moderate",
-    "minor": "--sev-minor",
-}
-SEVERITY_FALLBACK = {
-    "critical": "#a8123b",
-    "serious": "#d1451b",
-    "moderate": "#c07a00",
-    "minor": "#3b7dbf",
-}
+# The literal fallbacks are the design system's own values, read from it rather
+# than copied - a chart cannot drift away from the palette the stylesheet uses.
+BAND_VAR = {band: f"--{band}" for band in design_tokens.STATUS_COLORS}
+BAND_FALLBACK = dict(design_tokens.STATUS_COLORS)
+
+SEVERITY_VAR = {sev: f"--sev-{sev}"
+                for sev in ("critical", "serious", "moderate", "minor")}
+SEVERITY_FALLBACK = {sev: design_tokens.SEVERITY_COLORS[sev] for sev in SEVERITY_VAR}
 
 
 def _color(band):
     """var() with a literal fallback - safe in every renderer we target."""
-    return f"var({BAND_VAR.get(band, '--na')},{BAND_FALLBACK.get(band, '#94a3b8')})"
+    fallback = BAND_FALLBACK.get(band, BAND_FALLBACK["na"])
+    return f"var({BAND_VAR.get(band, '--na')},{fallback})"
 
 
 def _sev_color(severity):
-    return (f"var({SEVERITY_VAR.get(severity, '--sev-minor')},"
-            f"{SEVERITY_FALLBACK.get(severity, '#3b7dbf')})")
+    fallback = SEVERITY_FALLBACK.get(severity, SEVERITY_FALLBACK["minor"])
+    return f"var({SEVERITY_VAR.get(severity, '--sev-minor')},{fallback})"
 
 
 def _band(score):
@@ -87,7 +84,7 @@ def score_ring(score, label="", size=104, stroke=9, band=None, sublabel=""):
         f'height="{size}" role="img" aria-label="{_esc(sublabel or label)} '
         f'{"not measured" if score is None else str(text) + " out of 100"}">'
         f'<circle cx="{center}" cy="{center}" r="{radius:.2f}" fill="none" '
-        f'stroke="var(--line,#e6e9ef)" stroke-width="{stroke}"/>'
+        f'stroke="{_var("--line")}" stroke-width="{stroke}"/>'
         f'<circle cx="{center}" cy="{center}" r="{radius:.2f}" fill="none" '
         f'stroke="{color}" stroke-width="{stroke}" stroke-linecap="round" '
         f'stroke-dasharray="{dash:.2f} {circumference - dash:.2f}" '
@@ -135,20 +132,20 @@ def health_gauge(score, label="Overall health", width=260, thickness=16):
         x2 = cx + (radius - thickness * 0.95) * math.cos(rad)
         y2 = cy + (radius - thickness * 0.95) * math.sin(rad)
         ticks.append(f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" '
-                     f'stroke="var(--paper,#fff)" stroke-width="2" opacity=".55"/>')
+                     f'stroke="{_var("--paper")}" stroke-width="2" opacity=".55"/>')
 
     needle = ""
     if score is not None:
         deg = start + sweep * fraction
         x, y = point(deg)
         needle = (f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{thickness * 0.42:.1f}" '
-                  f'fill="var(--paper,#fff)" stroke="{color}" stroke-width="3"/>')
+                  f'fill="{_var("--paper")}" stroke="{color}" stroke-width="3"/>')
 
     return (
         f'<svg class="gauge gauge-{band}" viewBox="0 0 {width} {height}" width="{width}" '
         f'height="{height}" role="img" aria-label="{_esc(label)} '
         f'{"not determined" if score is None else value + " out of 100"}">'
-        f'<path d="{arc(start, start + sweep)}" fill="none" stroke="var(--line,#e6e9ef)" '
+        f'<path d="{arc(start, start + sweep)}" fill="none" stroke="{_var("--line")}" '
         f'stroke-width="{thickness}" stroke-linecap="round"/>'
         + (f'<path d="{arc(start, start + sweep * fraction)}" fill="none" stroke="{color}" '
            f'stroke-width="{thickness}" stroke-linecap="round"/>' if fraction > 0 else "")
@@ -156,7 +153,7 @@ def health_gauge(score, label="Overall health", width=260, thickness=16):
         f'<text class="gauge-value" x="{cx}" y="{cy + width * 0.05:.1f}" text-anchor="middle" '
         f'font-size="{int(width * 0.28)}" font-weight="800" fill="{color}">{value}</text>'
         f'<text class="gauge-cap" x="{cx}" y="{cy + width * 0.16:.1f}" text-anchor="middle" '
-        f'font-size="{int(width * 0.055)}" fill="var(--ink-3,#7b8794)" '
+        f'font-size="{int(width * 0.055)}" fill="{_var("--ink-3")}" '
         f'letter-spacing=".08em">OUT OF 100</text>'
         f'</svg>'
     )
@@ -176,7 +173,7 @@ def severity_bar(distribution, order=("critical", "serious", "moderate", "minor"
         return (f'<svg class="sevbar empty" viewBox="0 0 {width} {height}" width="100%" '
                 f'height="{height}" role="img" aria-label="No findings">'
                 f'<rect x="0" y="0" width="{width}" height="{height}" rx="{radius}" '
-                f'fill="var(--good-soft,#e4f5ec)"/>'
+                f'fill="{_var("--good-soft")}"/>'
                 f'</svg>')
 
     parts, x = [], 0.0
@@ -226,13 +223,13 @@ def severity_columns(distribution, order=("critical", "serious", "moderate", "mi
                         f'font-size="12" font-weight="700" fill="{_sev_color(key)}">{count}</text>')
         else:
             bars.append(f'<rect x="{x:.1f}" y="{pad_top + plot - 3:.1f}" width="{bar_w:.1f}" '
-                        f'height="3" rx="1.5" fill="var(--line,#e6e9ef)"/>')
+                        f'height="3" rx="1.5" fill="{_var("--line")}"/>')
         bars.append(f'<text x="{x + bar_w / 2:.1f}" y="{height - 10}" text-anchor="middle" '
-                    f'font-size="11" fill="var(--ink-3,#7b8794)">'
+                    f'font-size="11" fill="{_var("--ink-3")}">'
                     f'{_esc(labels.get(key, key))}</text>')
 
     baseline = (f'<line x1="0" y1="{pad_top + plot:.1f}" x2="{width}" y2="{pad_top + plot:.1f}" '
-                f'stroke="var(--line,#e6e9ef)" stroke-width="1"/>')
+                f'stroke="{_var("--line")}" stroke-width="1"/>')
     return (f'<svg class="sevcols" viewBox="0 0 {width} {height}" width="100%" '
             f'height="{height}" role="img" aria-label="Findings by severity">'
             f'{baseline}{"".join(bars)}</svg>')
@@ -266,7 +263,7 @@ def heatmap(matrix, max_rows=26, cell=38, gap=4, label_width=250, row_height=26)
     for c, col in enumerate(cols):
         x = label_width + c * (cell + gap) + cell / 2
         out.append(f'<text x="{x:.1f}" y="{head - 12}" text-anchor="middle" font-size="9.5" '
-                   f'font-weight="700" letter-spacing=".04em" fill="var(--ink-3,#7b8794)">'
+                   f'font-weight="700" letter-spacing=".04em" fill="{_var("--ink-3")}">'
                    f'{_esc(_abbrev(col["label"]))}</text>')
 
     for r, row in enumerate(rows):
@@ -275,7 +272,7 @@ def heatmap(matrix, max_rows=26, cell=38, gap=4, label_width=250, row_height=26)
         shown = path if len(path) <= 38 else path[:36] + "..."
         device = f' ({row["device"]})' if row.get("device") else ""
         out.append(f'<text x="0" y="{y + row_height * 0.68:.1f}" font-size="11" '
-                   f'fill="var(--ink-2,#4a5561)">{_esc(shown + device)}</text>')
+                   f'fill="{_var("--ink-2")}">{_esc(shown + device)}</text>')
         for c, cellv in enumerate(row.get("cells") or []):
             x = label_width + c * (cell + gap)
             band = cellv.get("band", "na")
@@ -287,7 +284,7 @@ def heatmap(matrix, max_rows=26, cell=38, gap=4, label_width=250, row_height=26)
                 f'<title>{_esc(path)} - {_esc(cellv.get("key", ""))}: {_esc(text)}</title></rect>'
                 f'<text x="{x + cell / 2:.1f}" y="{y + row_height * 0.68:.1f}" '
                 f'text-anchor="middle" font-size="11" font-weight="700" '
-                f'fill="{"var(--ink-3,#7b8794)" if band == "na" else "#fff"}">{_esc(text)}</text>')
+                f'fill="{_var("--ink-3") if band == "na" else "#fff"}">{_esc(text)}</text>')
 
     out.append("</svg>")
     return "".join(out)
@@ -321,7 +318,7 @@ def effort_pips(effort):
     filled = {"quick": 1, "moderate": 2, "involved": 3}.get(effort, 2)
     pips = "".join(
         f'<circle cx="{6 + i * 11}" cy="6" r="4.2" '
-        f'fill="{"currentColor" if i < filled else "var(--line,#e6e9ef)"}"/>'
+        f'fill="{"currentColor" if i < filled else _var("--line")}"/>'
         for i in range(3))
     return (f'<svg class="pips" viewBox="0 0 34 12" width="34" height="12" '
             f'role="img" aria-label="Effort: {_esc(effort)}">{pips}</svg>')
@@ -333,6 +330,6 @@ def spark_ratio(value, total, width=54, height=8):
     return (f'<svg class="spark" viewBox="0 0 {width} {height}" width="{width}" '
             f'height="{height}" aria-hidden="true">'
             f'<rect x="0" y="0" width="{width}" height="{height}" rx="{height / 2}" '
-            f'fill="var(--line-2,#f1f3f7)"/>'
+            f'fill="{_var("--line-2")}"/>'
             f'<rect x="0" y="0" width="{width * frac:.1f}" height="{height}" '
             f'rx="{height / 2}" fill="currentColor"/></svg>')
