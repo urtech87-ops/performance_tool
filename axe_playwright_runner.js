@@ -15,6 +15,11 @@
  * than as an argument because it can carry somebody's password, and a command
  * line is readable by every process on the machine.
  *
+ * Two keys in that object are not context options and are lifted out:
+ * `blockPatterns`, installed as a request-interception route so those requests
+ * never load, and `launchArgs`, flags for the browser process itself (the DNS
+ * override lives there - resolution happens below the browsing context).
+ *
  * Why Playwright instead of @axe-core/cli: the CLI drives Chrome through
  * ChromeDriver, and the npm `chromedriver` package is versioned independently
  * of the Chrome installed on the machine. Chrome auto-updates, the driver does
@@ -35,6 +40,8 @@
  *     which the scanner logs verbatim.
  *   - exit 0 means "this page was audited"; any non-zero exit means it was not.
  */
+
+const { installBlocking, launchArgs } = require('./scan_intercept.js');
 
 const RESULT_MARKER = '__AXE_RESULT__';
 const DEFAULT_TIMEOUT_S = 150;
@@ -69,20 +76,27 @@ function readStdin() {
 }
 
 /**
- * The browsing context this page is audited in. `cookies` and
- * `httpCredentials` are lifted out: the first needs context.addCookies() after
- * the context exists, the second is a newContext() option like the rest.
+ * The browsing context this page is audited in. `cookies`, `blockPatterns`
+ * and `launchArgs` are lifted out: the first needs context.addCookies() after
+ * the context exists, the second becomes a route on it, and the third belongs
+ * to the browser process. `httpCredentials` is a newContext() option like the
+ * rest.
  */
-async function browserOptions(url) {
-  if (!has('browser-stdin')) return { options: {}, cookies: [] };
+async function browserOptions() {
+  if (!has('browser-stdin')) return { options: {}, cookies: [], block: [], args: [] };
   let config;
   try {
     config = JSON.parse(await readStdin());
   } catch (err) {
     die('browser context on stdin is not valid JSON');
   }
-  const { cookies, ...options } = config || {};
-  return { options, cookies: Array.isArray(cookies) ? cookies : [] };
+  const { cookies, blockPatterns, launchArgs: args, ...options } = config || {};
+  return {
+    options,
+    cookies: Array.isArray(cookies) ? cookies : [],
+    block: Array.isArray(blockPatterns) ? blockPatterns : [],
+    args: Array.isArray(args) ? args : [],
+  };
 }
 
 function load(name) {
@@ -130,14 +144,18 @@ async function main() {
   const AxeBuilder = axeModule.AxeBuilder || axeModule.default;
   if (typeof AxeBuilder !== 'function') die('@axe-core/playwright exports no AxeBuilder');
 
+  // Read the browser payload before launching: it decides the launch flags.
+  const { options, cookies, block, args } = await browserOptions();
+
   let browser;
   try {
     browser = await chromium.launch({
       headless: true,
       // Same relaxations the ChromeDriver runner used: containers have no
       // sandbox, CI boxes have no GPU, and a site with a broken certificate
-      // chain should still be audited rather than skipped.
-      args: ['--no-sandbox', '--disable-gpu', '--ignore-certificate-errors'],
+      // chain should still be audited rather than skipped - plus whatever the
+      // scan configuration asked the browser process itself for.
+      args: launchArgs(args),
     });
   } catch (err) {
     die(
@@ -147,10 +165,12 @@ async function main() {
   }
 
   try {
-    const { options, cookies } = await browserOptions(url);
     const context = await browser.newContext(
       Object.assign({ ignoreHTTPSErrors: true }, options)
     );
+    // Blocked URLs are aborted at the network layer, before the page can spend
+    // anything on them.
+    await installBlocking(context, block);
     if (cookies.length) {
       const origin = new URL(url).origin;
       await context

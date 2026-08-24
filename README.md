@@ -5,9 +5,12 @@ scores and core metrics, itemized fix recommendations, plus optional passive
 security checks and an axe-core accessibility-standards audit.
 
 Under **Advanced options** the scan can also be shaped to match the real world:
-a connection preset (or a custom one), a named handset, a viewport and a
-User-Agent - and, for a site that is not public, HTTP Basic credentials, a
-pasted cookie jar, or a scripted form login.
+a connection preset (or a custom one), a named handset, a viewport, a
+User-Agent, a list of URLs to block, and a DNS override that points one
+hostname at an address of your choosing - and, for a site that is not public,
+HTTP Basic credentials, a pasted cookie jar, or a scripted form login. Any
+combination of those (except the sign-in fields) can be **saved as a named
+preset** and picked again next time.
 
 The scanning engine (`run_pipeline`, the scoring, and every report builder) is
 unchanged by anything described below. What this README covers is the serving
@@ -148,8 +151,63 @@ override whatever the profile would have used, and Chrome's own window is sized
 to match. A User-Agent override replaces the device's. Every value is clamped
 server-side, and a User-Agent cannot carry a newline into a header.
 
+**Blocked URLs.** A list of patterns - one per line, `*` matching any run of
+characters, a bare domain matching anywhere in the URL - that must not load
+while the pages are measured. This is real request interception, not a filter
+over the results: Chrome is given the list for the Lighthouse audits
+(`--blocked-url-patterns`, which is `Network.setBlockedURLs` underneath), the
+crawl gets it through its own config file, and the Playwright runners abort
+matching requests in the browsing context. A blocked third party therefore
+costs the page no connection, no bytes and no main-thread time, which is what
+makes "how fast is *my* site" answerable on a page full of tag managers.
+
+**DNS override.** Map one hostname to one IP address for the length of the
+scan - how a staging server is measured before its DNS is switched. It is
+Chrome's own `--host-resolver-rules`, applied to every browser the scan
+starts (the Lighthouse audits, the crawl, the axe runner and the scripted
+login), so only the address the connection goes to changes: the request still
+carries the real host name, the real SNI and the real cookies. Leave the host
+empty and the site being scanned is the one that gets mapped.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `ALLOW_DNS_OVERRIDE` | `1` | `0` refuses DNS overrides and hides the fields. A deployment that scans for strangers should consider it: pointing a hostname at an address of the requester's choosing is also a way to reach hosts the internet cannot. |
+
 Comparing two runs is only meaningful when these match - a 3G Pixel and an
 unthrottled desktop are not two measurements of the same thing.
+
+## Presets
+
+A preset is a name with a set of scan settings attached: device, depth,
+categories, throttling, viewport, User-Agent, block list, DNS override, max
+pages, parallelism, standards. Pick one from the box at the top of **Advanced
+options** and the whole panel fills in; save, rename, update or delete them
+there too, and mark one to start new scans on.
+
+Four are built in and always offered: *Default (as shipped)* - the settings
+this tool has always run with; *Mobile 4G handset*; *First-party only*, which
+blocks the usual analytics and ad hosts; and *Staging server (unthrottled)*.
+Built-ins cannot be renamed or deleted.
+
+**A preset never holds a credential.** Not HTTP Basic details, not cookies,
+not the form-login fields - those are used in memory for one scan and wiped
+(see below), so a preset re-selected tomorrow asks for them again. That is
+enforced rather than intended: `scanpresets.PRESET_FIELDS` is the fixed list a
+preset is assembled from, so a credential field is never read in the first
+place; a body carrying one is refused with a 400 rather than quietly trimmed;
+and the store refuses to persist a preset that contains one however it got
+there. The browser is handed that same field list, so the two ends cannot
+drift apart.
+
+Presets are per browser session (the `scan_sid` cookie, hashed - the store
+never holds the session id itself). They live in JSON files under `presets/`
+next to the app, or in Redis where the deployment has it.
+
+```
+GET    /api/presets            -> {presets: [...], default: "<id>", fields: [...]}
+POST   /api/presets            -> create, update, rename, or set the default
+DELETE /api/presets/<id>       -> delete one
+```
 
 ## Authenticated scanning
 
@@ -333,6 +391,14 @@ stubbed at `run_pipeline`, and the RQ path runs against `fakeredis`.
   User-Agent as it reaches the `lighthouse` and `unlighthouse-ci` command
   lines, and the guarantee that an unconfigured scan still runs the command it
   always ran.
+* `tests/test_scan_request_controls.py` - blocked URLs and the DNS override:
+  the flags and config each scanner is given, and the interception code itself
+  driven under Node to check that a matching request really is aborted and
+  everything else is left alone.
+* `tests/test_scan_presets.py` - presets round-tripping (save, reload, and
+  apply as a real scan request), create/rename/update/delete, the default
+  preset, and - from every direction a credential could get in - that no
+  preset ever holds one.
 * `tests/test_scan_auth.py` - Basic auth and cookies reaching both scanners,
   the scripted login taking its password on stdin rather than argv, and its
   session cookies travelling on into the scan.

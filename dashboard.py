@@ -59,6 +59,7 @@ import jobqueue
 import runstate
 import scanauth
 import scanconfig
+import scanpresets
 import verification
 from config import settings
 
@@ -102,8 +103,13 @@ if settings.TRUST_PROXY:
 
 SESSION_COOKIE = "scan_sid"
 
+# Saved scan settings, per browser session. Never credentials - see
+# scanpresets, which is built so one cannot get in.
+PRESETS_DIR = APP_DIR / "presets"
+
 _services_lock = threading.Lock()
 _limiter = None
+_presets = None
 
 
 def queue_backend():
@@ -133,11 +139,30 @@ def rate_limiter():
         return _limiter
 
 
+def preset_store():
+    """One preset store per process, matching whichever queue is in use.
+
+    With Redis, saved settings live there and every web process sees the same
+    ones; otherwise they are JSON files next to the app, so the local tool
+    keeps them across a restart.
+    """
+    global _presets
+    with _services_lock:
+        if _presets is None:
+            backend = queue_backend()
+            docs = (scanpresets.RedisPresetDocs(backend.r)
+                    if isinstance(backend, jobqueue.RedisQueueBackend)
+                    else scanpresets.FilePresetDocs(PRESETS_DIR))
+            _presets = scanpresets.set_store(scanpresets.PresetStore(docs))
+        return _presets
+
+
 def reset_services():
-    """Drop the cached limiter (used by tests and after a config reload)."""
-    global _limiter
+    """Drop the cached services (used by tests and after a config reload)."""
+    global _limiter, _presets
     with _services_lock:
         _limiter = None
+        _presets = None
 
 
 def session_id():
@@ -318,11 +343,18 @@ def _chrome_flags(cfg):
     A custom viewport is emulated by Lighthouse (`--screenEmulation.*`), but
     Chrome's own window still has to be big enough to hold it, or a wide
     desktop viewport gets a scrollbar it would never have in real life.
+
+    A DNS override joins it here as Chrome's own `--host-resolver-rules`, so
+    the audit connects to the address the scan was told to use while the
+    request itself is unchanged - same host name, same certificate, same
+    cookies. `scanconfig` quotes the rule, whose value contains spaces.
     """
     flags = BASE_CHROME_FLAGS
     width, height, _dpr = cfg.screen("")
     if width and height:
         flags += f" --window-size={width},{height}"
+    for extra in cfg.chrome_flags():
+        flags += f" {extra}"
     return f"--chrome-flags={flags}"
 
 
@@ -343,6 +375,31 @@ def _browser_kwargs(cfg, credentials):
     return {"browser": context} if context else {}
 
 
+CRAWL_CONFIG = "unlighthouse.config.js"
+
+
+def _write_crawl_config(run_dir, cfg, log):
+    """Hand the crawler the two settings its CLI has no flag for.
+
+    `unlighthouse-ci` reads a config file from the directory it runs in - which
+    is the run folder - and passes both of these straight down: the block list
+    to the Lighthouse it drives, the resolver rule to the browser it launches.
+    Written only when there is something to say, so an ordinary scan still runs
+    in a folder with no config file in it at all.
+    """
+    config = cfg.crawl_config()
+    if not config:
+        return None
+    path = Path(run_dir) / CRAWL_CONFIG
+    path.write_text("module.exports = " + json.dumps(config, indent=2) + ";\n",
+                    encoding="utf-8")
+    if config.get("lighthouseOptions"):
+        log(f"Crawl will block {len(cfg.block_patterns)} URL pattern(s).")
+    if config.get("puppeteerOptions"):
+        log(f"Crawl will resolve {cfg.dns_host} to {cfg.dns_ip}.")
+    return path
+
+
 def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, categories, log,
                  a11y=False, standards=None, scan_config=None, credentials=None):
     """Generator-free worker: does the whole scan, returns the run folder name.
@@ -353,8 +410,9 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
 
     `scan_config` (a `scanconfig.ScanConfig`) and `credentials` (a
     `scanauth.Credentials`) are inputs to the scanners and nothing more: they
-    add flags to the `unlighthouse-ci` and `lighthouse` command lines and, for
-    a scripted login, one browser run before the crawl. Neither touches the
+    add flags to the `unlighthouse-ci` and `lighthouse` command lines, tell the
+    browsers which requests to block and which host to resolve where, and, for
+    a scripted login, run one browser before the crawl. Neither touches the
     scoring, the metrics or the report - with both left at their defaults the
     commands below are exactly the ones this pipeline has always run.
 
@@ -368,6 +426,9 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
     scoring, metrics or issue extraction below is affected by that - the
     ledger only records what happened."""
     cfg = scan_config if scan_config is not None else scanconfig.DEFAULT
+    # A DNS override given as an address alone means "the site being scanned",
+    # so the host it maps is resolved once, here, where the URL is known.
+    cfg = cfg.for_url(url)
     creds = credentials
     # From here on `log` cannot emit a credential, whoever generated the line.
     redact = scanauth.redactor_for(creds)
@@ -412,6 +473,7 @@ def run_pipeline(url, device, samples, deep, max_pages, concurrency, security, c
                        "a signed-in session")
 
     # 1) crawl
+    _write_crawl_config(run_dir, cfg, log)
     log(f"Crawling {url} ({device}, {samples} sample(s))...")
     if DRYRUN:
         log("[dry-run] fabricating crawl results")
@@ -798,6 +860,9 @@ def api_limits():
         "verification_required": settings.REQUIRE_DOMAIN_VERIFICATION,
         "rate_limit_enabled": settings.RATE_LIMIT_ENABLED,
         "scan_auth_enabled": settings.ALLOW_SCAN_AUTH,
+        "dns_override_enabled": settings.ALLOW_DNS_OVERRIDE,
+        "max_presets": scanpresets.MAX_PRESETS,
+        "max_block_patterns": scanconfig.MAX_BLOCK_PATTERNS,
     })
 
 
@@ -813,6 +878,86 @@ def api_verify():
     payload["verified"] = (verification.is_verified(domain, use_cache=not recheck)
                            if settings.REQUIRE_DOMAIN_VERIFICATION or recheck else True)
     payload["required"] = settings.REQUIRE_DOMAIN_VERIFICATION
+    return jsonify(payload)
+
+
+# --------------------------- saved presets ---------------------------
+# A preset is a named set of scan settings, kept per browser session. The three
+# routes below are the whole feature: list, save (create / rename / update),
+# delete. Choosing which one a fresh page starts on is a save away.
+#
+# What they will not do is store a credential. `scanpresets` reads only the
+# fields on its own list, and refuses outright - 400, with a message - when a
+# body carries one of `scanauth.SECRET_FIELDS`, so a client that posts the
+# whole form by mistake is told, rather than quietly having its password
+# written to disk.
+
+def _owner_key(sid):
+    """The browser a set of presets belongs to, as an opaque key.
+
+    Hashed like the rate limiter's buckets: the store never holds the session
+    id itself, and one browser cannot read another's saved settings.
+    """
+    return hashlib.sha256((sid or "").encode()).hexdigest()[:24] if sid else ""
+
+
+def _preset_response(payload, sid=None, status=200):
+    resp = jsonify(payload)
+    if sid and not session_id():
+        resp.set_cookie(SESSION_COOKIE, sid, max_age=30 * 86400,
+                        samesite="Lax", httponly=True)
+    return resp, status
+
+
+@app.route("/api/presets")
+def api_presets():
+    """Every preset this browser can pick, and which one it starts on."""
+    return jsonify(preset_store().payload(_owner_key(session_id())))
+
+
+@app.route("/api/presets", methods=["POST"])
+def api_presets_save():
+    """Create, update or rename a preset - and optionally make it the default.
+
+    One route because they are one operation: a preset is identified by its id,
+    so a body with an id updates (or renames) that preset and a body without
+    one creates it. `{"id": ..., "default": true}` on its own only changes
+    which preset is the default, which is how a built-in becomes one.
+    """
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        body = request.form.to_dict() if request.form else {}
+    sid = session_id() or new_session_id()
+    owner = _owner_key(sid)
+    store = preset_store()
+    try:
+        if body.get("name"):
+            preset = store.save(owner, scanpresets.Preset.from_request(body),
+                                make_default=bool(body.get("default")))
+        elif body.get("id") and body.get("default"):
+            preset = store.set_default(owner, body.get("id"))
+        else:
+            raise scanpresets.PresetError("A preset needs a name.")
+    except scanpresets.PresetError as exc:
+        return jsonify({"reason": "invalid", "message": str(exc)}), 400
+    payload = store.payload(owner)
+    payload["preset"] = preset.as_dict()
+    return _preset_response(payload, sid)
+
+
+@app.route("/api/presets/<preset_id>", methods=["DELETE"])
+def api_presets_delete(preset_id):
+    owner = _owner_key(session_id())
+    store = preset_store()
+    try:
+        removed = store.delete(owner, preset_id)
+    except scanpresets.PresetError as exc:
+        return jsonify({"reason": "invalid", "message": str(exc)}), 400
+    if not removed:
+        return jsonify({"reason": "invalid",
+                        "message": "That preset no longer exists."}), 404
+    payload = store.payload(owner)
+    payload["deleted"] = preset_id
     return jsonify(payload)
 
 
@@ -1164,6 +1309,13 @@ PAGE = """<!DOCTYPE html>
   .num textarea{width:100%;min-height:70px;padding:9px 11px;border:1.5px solid var(--line);border-radius:9px;
     font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--ink);resize:vertical}
   .num textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--ring)}
+  /* saved presets: one row, at the top of the advanced options */
+  .agroup.presets{background:#f7f8ff;border:1.5px solid #e0e3ff;border-radius:14px;padding:16px 18px}
+  .agroup.presets > .atitle{color:var(--brand)}
+  .agroup.presets .btn{padding:8px 13px;font-size:12.5px}
+  .pmsg{font-size:12.5px;font-weight:600;color:var(--muted)}
+  .pmsg.err{color:var(--sec)}
+  .pmsg.ok{color:#0f766e}
   /* the credentials block says, on its face, what happens to what you type */
   .agroup.secret{border:1.5px solid #ddd0f7;background:#faf8ff;border-radius:14px;padding:16px 18px;margin-top:22px}
   .agroup.secret > .atitle{color:var(--wcag)}
@@ -1302,6 +1454,24 @@ PAGE = """<!DOCTYPE html>
     <details class="adv">
       <summary><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>Advanced options</summary>
 
+      <div class="agroup presets">
+        <div class="atitle"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4h14v16l-7-4-7 4z"/></svg>Presets</div>
+        <div class="ahint">Save everything on this panel under a name and pick it again next time.
+          A preset holds scan settings only &mdash; the sign-in fields below are never part of one.</div>
+        <div class="adv-grid">
+          <label class="sel"><span>Preset</span><select id="preset_select"></select></label>
+          <div class="num grow"><span>Name</span><input id="preset_name" type="text" class="tin" placeholder="e.g. Staging box, mobile 4G" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div class="adv-grid">
+          <button class="btn" id="preset_save" type="button">Save as new</button>
+          <button class="btn" id="preset_update" type="button">Update</button>
+          <button class="btn" id="preset_rename" type="button">Rename</button>
+          <button class="btn sec" id="preset_delete" type="button">Delete</button>
+          <label class="sw"><span class="switch"><input type="checkbox" id="preset_default"><span class="track"></span></span>Start new scans with this one</label>
+          <span class="pmsg" id="preset_msg"></span>
+        </div>
+      </div>
+
       <div class="agroup">
         <div class="atitle">Scan depth</div>
         <div class="adv-grid">
@@ -1341,6 +1511,23 @@ PAGE = """<!DOCTYPE html>
         </div>
         <div class="adv-grid">
           <div class="num grow"><span>User-Agent override</span><input id="user_agent" type="text" class="tin" placeholder="leave empty for the device's own" autocomplete="off" spellcheck="false"></div>
+        </div>
+      </div>
+
+      <div class="agroup">
+        <div class="atitle">Requests &amp; DNS</div>
+        <div class="ahint">Blocked URLs never load: the browser aborts them before they are sent, so
+          ads, analytics and third-party widgets cost the page nothing. One pattern per line;
+          <code>*</code> matches any run of characters, and a bare domain matches anywhere in the URL.
+          The DNS override points one hostname at an address for this scan only &mdash; how a staging
+          server is measured before its DNS is switched. Everything else about the request is
+          unchanged, so the site still sees its own host name and certificate.</div>
+        <div class="adv-grid">
+          <div class="num grow"><span>Block URLs</span><textarea id="block_patterns" autocomplete="off" spellcheck="false" placeholder="*googletagmanager.com*&#10;*doubleclick.net*&#10;*/ads/*"></textarea></div>
+        </div>
+        <div class="adv-grid" id="dnsrow">
+          <div class="num"><span>Resolve host</span><input id="dns_host" type="text" class="tin" placeholder="the scanned hostname" autocomplete="off" spellcheck="false"></div>
+          <div class="num"><span>To this address</span><input id="dns_ip" type="text" class="tin" placeholder="203.0.113.10" autocomplete="off" spellcheck="false"></div>
         </div>
       </div>
 
@@ -1448,16 +1635,35 @@ PAGE = """<!DOCTYPE html>
                        "login_submit_selector","login_user","login_pass"];
   var SETTING_FIELDS = ["samples","maxpages","concurrency","throttling","down_kbps",
                         "up_kbps","latency_ms","device_profile","viewport_width",
-                        "viewport_height","dpr","user_agent"];
+                        "viewport_height","dpr","user_agent","block_patterns",
+                        "dns_host","dns_ip"];
+  // The fields a preset may hold, straight from the server (scanpresets.
+  // PRESET_FIELDS). Reading it from there is what keeps the two ends honest:
+  // the browser cannot offer to save a field the server will not store, and
+  // no name on SECRET_FIELDS is on it.
+  var PRESET_FIELDS = <!--PRESET_FIELDS-->;
+  // Where a preset field lives in the form, when the id is not the field name.
+  var PRESET_INPUT = {max_pages:"maxpages"};
   var PREFS_KEY = "scan.settings.v1";
 
   function val(id){ var el = document.getElementById(id); return el ? el.value.trim() : ""; }
+  function setVal(id, v){
+    var el = document.getElementById(id);
+    if(!el){ return; }
+    if(Array.isArray(v)){ v = v.join("\\n"); }
+    // 0 is how the server spells "not set" for the optional numbers.
+    el.value = (v === 0 || v === null || v === undefined) ? "" : String(v);
+  }
 
   // device segmented control
   let device = "desktop";
+  function setDevice(v){
+    device = (v === "mobile") ? "mobile" : "desktop";
+    document.querySelectorAll("#device button").forEach(function(x){
+      x.classList.toggle("on", x.dataset.v === device); });
+  }
   document.querySelectorAll("#device button").forEach(function(b){
-    b.onclick = function(){ device = b.dataset.v;
-      document.querySelectorAll("#device button").forEach(function(x){ x.classList.toggle("on", x===b); }); };
+    b.onclick = function(){ setDevice(b.dataset.v); };
   });
   // category chips toggle
   var stdwrap = document.getElementById("stdwrap");
@@ -1501,18 +1707,15 @@ PAGE = """<!DOCTYPE html>
   function loadSettings(){
     var saved = null;
     try { saved = JSON.parse(localStorage.getItem(PREFS_KEY) || "null"); } catch(err){ }
-    if(!saved){ syncThrottle(); return; }
+    if(!saved){ syncThrottle(); return false; }
     SETTING_FIELDS.forEach(function(id){
       var el = document.getElementById(id);
       if(el && typeof saved[id] === "string" && saved[id] !== ""){ el.value = saved[id]; }
     });
     if(typeof saved.deep === "boolean"){ document.getElementById("deep").checked = saved.deep; }
-    if(saved.device === "mobile" || saved.device === "desktop"){
-      device = saved.device;
-      document.querySelectorAll("#device button").forEach(function(x){
-        x.classList.toggle("on", x.dataset.v === device); });
-    }
+    if(saved.device === "mobile" || saved.device === "desktop"){ setDevice(saved.device); }
     syncThrottle();
+    return true;
   }
 
   document.getElementById("clearauth").onclick = function(){
@@ -1522,7 +1725,183 @@ PAGE = """<!DOCTYPE html>
     });
   };
 
-  loadSettings();
+  var restored = loadSettings();
+
+  // ---- presets ------------------------------------------------------
+  // A named set of the settings on this panel, saved on the server against
+  // this browser's session. The payload is assembled field by field from
+  // PRESET_FIELDS, so what is sent is exactly what the server stores - the
+  // sign-in inputs are not read here and have no way in.
+  var presets = [], presetDefault = "";
+  var presetSel = document.getElementById("preset_select");
+  var presetName = document.getElementById("preset_name");
+  var presetMsg = document.getElementById("preset_msg");
+  var presetDefaultBox = document.getElementById("preset_default");
+
+  function asList(v){
+    if(Array.isArray(v)){ return v.slice(); }
+    return String(v || "").split(",").map(function(x){ return x.trim(); })
+      .filter(function(x){ return x !== ""; });
+  }
+
+  function pmsg(text, kind){
+    presetMsg.className = "pmsg" + (kind ? " " + kind : "");
+    presetMsg.textContent = text || "";
+  }
+
+  /** The form as a preset - only the fields the server stores. */
+  function formSettings(){
+    var cats = selectedCats();
+    var live = {
+      device: device,
+      deep: document.getElementById("deep").checked,
+      samples: val("samples"), max_pages: val("maxpages"),
+      concurrency: val("concurrency"),
+      categories: cats.filter(function(c){
+        return c !== "security" && c !== "a11y-standards"; }).join(","),
+      security: cats.indexOf("security") !== -1,
+      a11y: cats.indexOf("a11y-standards") !== -1,
+      standards: selectedStds().join(",")
+    };
+    var out = {};
+    PRESET_FIELDS.forEach(function(field){
+      out[field] = (field in live) ? live[field] : val(PRESET_INPUT[field] || field);
+    });
+    return out;
+  }
+
+  /** Fill the whole panel in from a preset's settings. */
+  function applySettings(s){
+    if(!s){ return; }
+    setDevice(s.device);
+    if(typeof s.deep === "boolean"){ document.getElementById("deep").checked = s.deep; }
+    var cats = asList(s.categories);
+    if(s.security){ cats.push("security"); }
+    if(s.a11y){ cats.push("a11y-standards"); }
+    document.querySelectorAll("#cats .chip").forEach(function(ch){
+      ch.classList.toggle("on", cats.indexOf(ch.dataset.cat) !== -1); });
+    var stds = asList(s.standards);
+    document.querySelectorAll("#stds .chip").forEach(function(ch){
+      ch.classList.toggle("on", stds.indexOf(ch.dataset.std) !== -1); });
+    syncStdWrap();
+    PRESET_FIELDS.forEach(function(field){
+      if(["device","deep","categories","security","a11y","standards"].indexOf(field) !== -1){ return; }
+      setVal(PRESET_INPUT[field] || field, s[field]);
+    });
+    syncThrottle();
+  }
+
+  function selectedPreset(){
+    var id = presetSel.value;
+    for(var i = 0; i < presets.length; i++){ if(presets[i].id === id){ return presets[i]; } }
+    return null;
+  }
+
+  function renderPresets(select){
+    presetSel.innerHTML = "";
+    presets.forEach(function(p){
+      var opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name + (p.id === presetDefault ? " \u00b7 default" : "");
+      presetSel.appendChild(opt);
+    });
+    presetSel.value = select || presetDefault;
+    var current = selectedPreset();
+    presetDefaultBox.checked = !!current && current.id === presetDefault;
+    document.getElementById("preset_update").disabled = !current || current.builtin;
+    document.getElementById("preset_rename").disabled = !current || current.builtin;
+    document.getElementById("preset_delete").disabled = !current || current.builtin;
+  }
+
+  function takePresets(payload, select){
+    presets = payload.presets || [];
+    presetDefault = payload.default || "";
+    renderPresets(select);
+  }
+
+  function postPreset(body, done){
+    fetch("/api/presets", {method:"POST", headers:{"Content-Type":"application/json"},
+                           body: JSON.stringify(body)})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); })
+      .then(function(res){
+        if(!res.ok){ pmsg(res.body.message || "That preset was not saved.", "err"); return; }
+        takePresets(res.body, (res.body.preset || {}).id);
+        if(done){ done(res.body); }
+      })
+      .catch(function(){ pmsg("Could not reach the server.", "err"); });
+  }
+
+  fetch("/api/presets").then(function(r){ return r.json(); }).then(function(j){
+    takePresets(j);
+    var start = selectedPreset();
+    // A browser with settings of its own keeps them; a fresh one starts on
+    // whichever preset is the default.
+    if(!restored && start){ applySettings(start.settings); }
+    if(start){ presetName.value = start.builtin ? "" : start.name; }
+  }).catch(function(){ /* presets are a convenience - the form still works */ });
+
+  presetSel.onchange = function(){
+    var p = selectedPreset();
+    if(!p){ return; }
+    applySettings(p.settings);
+    presetName.value = p.builtin ? "" : p.name;
+    presetDefaultBox.checked = p.id === presetDefault;
+    renderPresets(p.id);
+    pmsg("Applied \u201c" + p.name + "\u201d.", "ok");
+  };
+
+  document.getElementById("preset_save").onclick = function(){
+    var name = presetName.value.trim();
+    if(!name){ pmsg("Give the preset a name first.", "err"); return; }
+    postPreset({name:name, settings:formSettings(), default:presetDefaultBox.checked},
+               function(){ pmsg("Saved \u201c" + name + "\u201d.", "ok"); });
+  };
+
+  document.getElementById("preset_update").onclick = function(){
+    var p = selectedPreset();
+    if(!p || p.builtin){ pmsg("Pick one of your own presets to update.", "err"); return; }
+    var name = presetName.value.trim() || p.name;
+    postPreset({id:p.id, name:name, settings:formSettings(),
+                default:presetDefaultBox.checked},
+               function(){ pmsg("Updated \u201c" + name + "\u201d.", "ok"); });
+  };
+
+  document.getElementById("preset_rename").onclick = function(){
+    var p = selectedPreset();
+    if(!p || p.builtin){ pmsg("Built-in presets cannot be renamed.", "err"); return; }
+    var name = presetName.value.trim();
+    if(!name){ pmsg("Type the new name first.", "err"); return; }
+    postPreset({id:p.id, name:name, settings:p.settings},
+               function(){ pmsg("Renamed to \u201c" + name + "\u201d.", "ok"); });
+  };
+
+  document.getElementById("preset_delete").onclick = function(){
+    var p = selectedPreset();
+    if(!p || p.builtin){ pmsg("Built-in presets cannot be deleted.", "err"); return; }
+    fetch("/api/presets/" + encodeURIComponent(p.id), {method:"DELETE"})
+      .then(function(r){ return r.json().then(function(j){ return {ok:r.ok, body:j}; }); })
+      .then(function(res){
+        if(!res.ok){ pmsg(res.body.message || "That preset was not deleted.", "err"); return; }
+        takePresets(res.body);
+        presetName.value = "";
+        pmsg("Deleted \u201c" + p.name + "\u201d.", "ok");
+      })
+      .catch(function(){ pmsg("Could not reach the server.", "err"); });
+  };
+
+  presetDefaultBox.onchange = function(){
+    var p = selectedPreset();
+    if(!p){ return; }
+    if(!presetDefaultBox.checked){
+      // Turning it off means "back to the one this tool ships with".
+      postPreset({id:"builtin_default", default:true},
+                 function(){ renderPresets(p.id); pmsg("Default reset.", "ok"); });
+      return;
+    }
+    postPreset({id:p.id, default:true},
+               function(){ renderPresets(p.id);
+                           pmsg("\u201c" + p.name + "\u201d is now the default.", "ok"); });
+  };
 
   var logwrap = document.getElementById("logwrap");
   var logEl = document.getElementById("log");
@@ -1543,6 +1922,10 @@ PAGE = """<!DOCTYPE html>
     sa.max = j.samples;   if(+sa.value > j.samples){ sa.value = j.samples; }
     var pa = document.getElementById("concurrency");
     pa.max = j.parallel;  if(+pa.value > j.parallel){ pa.value = j.parallel; }
+    if(j.dns_override_enabled === false){
+      var dns = document.getElementById("dnsrow");
+      if(dns){ dns.style.display = "none"; }
+    }
     if(j.scan_auth_enabled === false){
       // This deployment does not accept third-party credentials at all, so
       // don't offer fields whose contents it would only refuse.
@@ -1866,6 +2249,9 @@ PAGE = PAGE.replace(
     "<!--DEVICE_OPTIONS-->",
     '<option value="">Match the Device setting above</option>'
     + _options(scanconfig.device_choices()))
+# The browser is handed the server's own list of what a preset may hold, so
+# the two cannot drift - and so no credential field can appear on it.
+PAGE = PAGE.replace("<!--PRESET_FIELDS-->", json.dumps(list(scanpresets.PRESET_FIELDS)))
 
 
 if __name__ == "__main__":

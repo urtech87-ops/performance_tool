@@ -128,12 +128,29 @@ def sanitize_params(args):
         "categories": categories,
         "a11y": _flag(get("a11y")),
         "standards": standards,
-        # Browser conditions - throttling, device, viewport, User-Agent. All
-        # clamped by scanconfig, and all of it public: this dict is queued,
-        # stored in the job record and echoed back to the browser.
-        "scan_config": scanconfig.ScanConfig.from_request(get).as_dict(),
+        # Browser conditions - throttling, device, viewport, User-Agent, the
+        # URL block list and the DNS override. All clamped by scanconfig, and
+        # all of it public: this dict is queued, stored in the job record and
+        # echoed back to the browser.
+        "scan_config": _scan_config(get).as_dict(),
     }
     return params, None, capped
+
+
+def _scan_config(get):
+    """The browser conditions for one request.
+
+    The only judgement made here is the deployment's own: where
+    ALLOW_DNS_OVERRIDE is off, the DNS fields are dropped before anything is
+    built from them, so a client cannot point a scan at an address of its
+    choosing on a server that does not offer that.
+    """
+    cfg = scanconfig.ScanConfig.from_request(get)
+    if cfg.dns_ip and not settings.ALLOW_DNS_OVERRIDE:
+        data = cfg.as_dict()
+        data["dns_host"] = data["dns_ip"] = ""
+        cfg = scanconfig.ScanConfig(**data)
+    return cfg
 
 
 def extract_credentials(body):
