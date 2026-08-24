@@ -36,6 +36,14 @@ import os
 import re
 from pathlib import Path
 
+import design_tokens
+# The colour maths and the palettes live in the design system, not here. This
+# module's job is to resolve *who* the report belongs to; `design_tokens` turns
+# the three colours it resolves into the full token set both surfaces read.
+from design_tokens import (  # noqa: F401  (re-exported for callers)
+    hex_to_rgb, mix, rgb_to_hex, rgba, readable_ink, relative_luminance, shade, tint,
+)
+
 APP_DIR = Path(__file__).resolve().parent
 BRAND_ENV = "PERF_REPORT_BRAND"
 BRAND_FILENAME = "brand.json"
@@ -51,6 +59,11 @@ DEFAULTS = {
     "ink": "#0f172a",
     "report_title": "Website Health Report",
     "report_subtitle": "Performance, accessibility, SEO and security",
+    # The dashboard app's own name and strapline. Empty means "use the agency
+    # name and the built-in strapline", so a brand.json written for the report
+    # alone still re-skins the app.
+    "app_name": "",
+    "app_tagline": "",
     "contact": "",
     "footer_note": "",
     "font_stack": ("'Inter','Segoe UI',-apple-system,BlinkMacSystemFont,"
@@ -59,21 +72,15 @@ DEFAULTS = {
 }
 
 # Scores and severities keep their own semantic palette: a brand colour never
-# gets to decide whether a failure looks like a failure.
-STATUS_COLORS = {
-    "good": "#0f8a4d",
-    "avg": "#c07a00",
-    "poor": "#cf2f3f",
-    "na": "#94a3b8",
-}
+# gets to decide whether a failure looks like a failure. Both live in
+# design_tokens, which is the one place either surface reads colour from.
+STATUS_COLORS = design_tokens.STATUS_COLORS
+SEVERITY_COLORS = design_tokens.SEVERITY_COLORS
+CATEGORY_COLORS = design_tokens.CATEGORY_COLORS
 
-SEVERITY_COLORS = {
-    "critical": "#a8123b",
-    "serious": "#d1451b",
-    "moderate": "#c07a00",
-    "minor": "#3b7dbf",
-    "info": "#64748b",
-}
+# What the dashboard says under its own name when a brand does not replace it.
+DEFAULT_TAGLINE = ("Whole-site audits - performance, accessibility, SEO, "
+                   "best practices, security and WCAG standards.")
 
 HEX_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 IMAGE_SUFFIXES = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif"}
@@ -85,57 +92,7 @@ MAX_LOGO_BYTES = 2_000_000
 # --------------------------------------------------------------------------
 
 def _clean_hex(value, fallback):
-    v = str(value or "").strip()
-    if not HEX_RE.match(v):
-        return fallback
-    if len(v) == 4:  # #abc -> #aabbcc
-        v = "#" + "".join(c * 2 for c in v[1:])
-    return v.lower()
-
-
-def hex_to_rgb(value):
-    v = _clean_hex(value, "#000000").lstrip("#")
-    return tuple(int(v[i:i + 2], 16) for i in (0, 2, 4))
-
-
-def rgb_to_hex(rgb):
-    return "#" + "".join(f"{max(0, min(255, int(round(c)))):02x}" for c in rgb)
-
-
-def mix(color, other, amount):
-    """Blend `amount` (0..1) of `other` into `color`."""
-    a, b = hex_to_rgb(color), hex_to_rgb(other)
-    amount = max(0.0, min(1.0, float(amount)))
-    return rgb_to_hex(tuple(x + (y - x) * amount for x, y in zip(a, b)))
-
-
-def tint(color, amount):
-    return mix(color, "#ffffff", amount)
-
-
-def shade(color, amount):
-    return mix(color, "#000000", amount)
-
-
-def relative_luminance(color):
-    def channel(c):
-        c = c / 255.0
-        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
-    r, g, b = (channel(c) for c in hex_to_rgb(color))
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-
-def readable_ink(background, light="#ffffff", dark="#0f172a"):
-    """Pick whichever of light/dark reads better on `background`."""
-    lum = relative_luminance(background)
-    contrast_light = (relative_luminance(light) + 0.05) / (lum + 0.05)
-    contrast_dark = (lum + 0.05) / (relative_luminance(dark) + 0.05)
-    return light if contrast_light >= contrast_dark else dark
-
-
-def rgba(color, alpha):
-    r, g, b = hex_to_rgb(color)
-    return f"rgba({r},{g},{b},{round(float(alpha), 3)})"
+    return design_tokens.clean_hex(value, fallback)
 
 
 # --------------------------------------------------------------------------
@@ -200,6 +157,8 @@ class Brand:
         self.client_name = str(cfg["client_name"]).strip()
         self.report_title = str(cfg["report_title"]).strip() or DEFAULTS["report_title"]
         self.report_subtitle = str(cfg["report_subtitle"]).strip()
+        self.app_name = str(cfg["app_name"]).strip() or self.agency_name
+        self.app_tagline = str(cfg["app_tagline"]).strip() or DEFAULT_TAGLINE
         self.contact = str(cfg["contact"]).strip()
         self.footer_note = str(cfg["footer_note"]).strip()
         self.font_stack = str(cfg["font_stack"]).strip() or DEFAULTS["font_stack"]
@@ -221,44 +180,15 @@ class Brand:
         return readable_ink(self.primary)
 
     def tokens(self):
-        """CSS custom properties: one place the whole report reads colour,
-        type and spacing from."""
-        p, s, ink = self.primary, self.secondary, self.ink
-        t = {
-            "--brand": p,
-            "--brand-ink": self.on_primary,
-            "--brand-dark": shade(p, 0.32),
-            "--brand-deep": shade(p, 0.55),
-            "--brand-soft": tint(p, 0.88),
-            "--brand-softer": tint(p, 0.95),
-            "--brand-line": tint(p, 0.72),
-            "--brand2": s,
-            "--brand2-soft": tint(s, 0.9),
-            "--grad": f"linear-gradient(135deg,{p},{s})",
-            "--grad-soft": f"linear-gradient(135deg,{tint(p, 0.9)},{tint(s, 0.92)})",
-            "--cover-bg": f"linear-gradient(150deg,{shade(p, 0.55)},{shade(s, 0.35)})",
-            "--ink": ink,
-            "--ink-2": mix(ink, "#ffffff", 0.32),
-            "--ink-3": mix(ink, "#ffffff", 0.52),
-            "--line": mix(ink, "#ffffff", 0.88),
-            "--line-2": mix(ink, "#ffffff", 0.94),
-            "--paper": "#ffffff",
-            "--paper-2": mix(ink, "#ffffff", 0.975),
-            "--shadow": f"0 1px 2px {rgba(ink, .06)}, 0 8px 24px -12px {rgba(ink, .18)}",
-            "--shadow-lg": f"0 24px 60px -28px {rgba(ink, .35)}",
-            "--font": self.font_stack,
-            "--mono": self.mono_stack,
-        }
-        for name, color in STATUS_COLORS.items():
-            t[f"--{name}"] = color
-            t[f"--{name}-soft"] = tint(color, 0.9)
-        for name, color in SEVERITY_COLORS.items():
-            t[f"--sev-{name}"] = color
-            t[f"--sev-{name}-soft"] = tint(color, 0.9)
-        return t
+        """Every CSS custom property, from `design_tokens`.
+
+        The app and the report call this same method, so the two surfaces can
+        only ever draw from one palette - re-skinning either means re-skinning
+        both."""
+        return design_tokens.all_tokens(self)
 
     def css_variables(self, indent="    "):
-        return "\n".join(f"{indent}{k}: {v};" for k, v in self.tokens().items())
+        return design_tokens.css_variables(self, indent)
 
     def as_dict(self):
         return {
@@ -267,6 +197,8 @@ class Brand:
             "client_name": self.client_name,
             "report_title": self.report_title,
             "report_subtitle": self.report_subtitle,
+            "app_name": self.app_name,
+            "app_tagline": self.app_tagline,
             "contact": self.contact,
             "footer_note": self.footer_note,
             "primary": self.primary,

@@ -37,6 +37,18 @@ web process. It is for one person on one machine, which is what
 `DEPLOYMENT_MODE=local` (the default) assumes. Add `DASHBOARD_DRYRUN=1` to
 click through the UI without a real scan.
 
+To look at the interface itself - every state it can be in, and the report
+beside it - without a server or a scan at all:
+
+```bash
+python ui_preview.py           # -> preview/index.html
+python report_sample.py        # -> sample-report.html, from a fixture
+```
+
+A running local server serves the same thing at `/preview`. The app and the
+report share one design system, re-skinnable from a single `brand.json`; see
+**[DESIGN.md](DESIGN.md)**.
+
 ## Public run (Redis queue + worker pool + gunicorn)
 
 Three processes, started in this order:
@@ -537,6 +549,10 @@ stubbed at `run_pipeline`, and the RQ path runs against `fakeredis`.
   folder, no log line, no ledger entry, no job record, no streamed event, no
   saved setting and no URL may contain one - and, as the counterweight, that
   the scanners really were given them.
+* `tests/test_design_system.py` - the look, held to its promise: both surfaces
+  emit one token set and one shared component layer, no rule hard-codes a
+  colour, type size or spacing step, a re-skin leaves nothing of the default
+  behind, and no brand input can recolour a verdict.
 * `tests/test_deployment_mode.py` - the defaults of both modes, that `public`
   cannot be loosened one variable at a time, that an unrecognised value reads
   as `public`, the credential ownership gate, the Redis persistence proof, and

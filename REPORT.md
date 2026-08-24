@@ -8,10 +8,12 @@ report with a print-perfect PDF.
 consolidate_report.py   reads the run folder -> the page list       (reading)
 report_model.py         page list + axe + security -> one Report    (what it says)
 report_charts.py        inline SVG: rings, gauge, bars, heatmap     (how it shows)
-report_css.py           design tokens + screen CSS + paged CSS      (how it looks)
+report_css.py           the report's screen + paged CSS              (how it looks)
 report_render.py        Report -> one HTML document                 (assembly)
 report_pdf.py           that document -> PDF, paginated by paged.js (paper)
-report_brand.py         brand.json -> names, logos, colour tokens   (whose it is)
+report_brand.py         brand.json -> names, logos, 3 colours        (whose it is)
+design_tokens.py        those -> every token, shared with the app    (the system)
+design_css.py           the components both surfaces share           (one card)
 report_sample.py        the same report from a fixture, no scan     (iteration)
 ```
 
@@ -91,7 +93,9 @@ The polyfill is resolved in this order, and only the last step needs a network:
 
 Drop a `brand.json` next to the report being written, or next to the code, or
 point `$PERF_REPORT_BRAND` at one. See `brand.example.json`; every field is
-optional.
+optional. The same file re-skins the dashboard app - one brand, both surfaces.
+**[DESIGN.md](DESIGN.md) is the full note on which token to change for colour,
+font and logo.**
 
 ```json
 {
@@ -106,10 +110,11 @@ optional.
 ```
 
 Logos are inlined as data URIs, so `report.html` stays a single file you can
-email. The primary and secondary colours derive the whole brand token set. The
-status palette (green/amber/red) and the severity palette are deliberately not
-brandable — a critical finding has to look critical whatever the agency's
-colours are.
+email. The primary, secondary and ink colours derive the whole token set, in
+`design_tokens.py`, which the app reads too. The status palette
+(green/amber/red) and the severity palette are deliberately not brandable — a
+critical finding has to look critical whatever the agency's colours are, and
+`tests/test_design_system.py` fails if a brand input ever reaches them.
 
 ## Iterating on the layout without a scan
 
@@ -127,6 +132,10 @@ python report_sample.py --pdf --keep-print-html   # keep the paginated document
 `tests/test_premium_report.py` renders from the same fixture, so the layout,
 the ordering rules, the escaping, the brand plumbing and the paged-media rules
 are all checked in under a second with no Node, no browser and no live site.
+
+The app has the same escape hatch: `python ui_preview.py` writes the real
+dashboard page once per state it can be in, next to a fixture-rendered report,
+so both surfaces can be looked at together. See [DESIGN.md](DESIGN.md).
 
 ## What changed in the existing modules
 

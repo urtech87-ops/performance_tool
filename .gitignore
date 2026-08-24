@@ -3,9 +3,11 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
-# Preview output from report_sample.py, and the intermediate paginated document
+# Preview output from report_sample.py and ui_preview.py, and the intermediate
+# paginated document
 sample-report.html
 sample-report.pdf
+preview/
 *.print.html
 vendor/pagedjs/*.js
 
