@@ -405,11 +405,11 @@ def test_the_override_is_named_in_the_scan_log(runs_dir, crawl, procs, report):
 def test_the_request_layer_reads_both_controls():
     params, error, _ = guardrails.sanitize_params({
         "url": "https://x.test", "block_patterns": "*ads*\n*beacon*",
-        "dns_host": "staging.x.test", "dns_ip": "10.0.0.9"})
+        "dns_host": "staging.x.test", "dns_ip": "203.0.113.9"})
     assert error is None
     cfg = scanconfig.ScanConfig.from_dict(params["scan_config"])
     assert cfg.block_patterns == ("*ads*", "*beacon*")
-    assert cfg.host_rules() == "MAP staging.x.test 10.0.0.9"
+    assert cfg.host_rules() == "MAP staging.x.test 203.0.113.9"
 
 
 def test_the_block_list_survives_the_queue_as_json(runs_dir, monkeypatch):
@@ -422,10 +422,10 @@ def test_the_block_list_survives_the_queue_as_json(runs_dir, monkeypatch):
     monkeypatch.setattr(dashboard, "run_artifacts", lambda name: [])
     params, _, _ = guardrails.sanitize_params({"url": "https://x.test",
                                                "block_patterns": ["*ads*"],
-                                               "dns_ip": "10.0.0.9"})
+                                               "dns_ip": "203.0.113.9"})
     tasks.run_scan_job(json.loads(json.dumps(params)), lambda *_: None)
     assert seen["scan_config"] == scanconfig.ScanConfig(block_patterns=["*ads*"],
-                                                        dns_ip="10.0.0.9")
+                                                        dns_ip="203.0.113.9")
 
 
 def test_the_scan_route_passes_both_through(monkeypatch):
@@ -438,12 +438,12 @@ def test_the_scan_route_passes_both_through(monkeypatch):
     resp = client.post("/scan", json={"url": "https://x.test",
                                       "categories": "performance",
                                       "block_patterns": "*ads*\n*beacon*",
-                                      "dns_ip": "10.0.0.9"})
+                                      "dns_ip": "203.0.113.9"})
     assert resp.status_code == 200
     client.get(resp.get_json()["stream"])
     cfg = calls[0]["scan_config"]
     assert cfg.block_patterns == ("*ads*", "*beacon*")
-    assert cfg.dns_ip == "10.0.0.9"
+    assert cfg.dns_ip == "203.0.113.9"
 
 
 def test_a_deployment_can_refuse_dns_overrides(monkeypatch):
@@ -454,7 +454,7 @@ def test_a_deployment_can_refuse_dns_overrides(monkeypatch):
     monkeypatch.setattr(settings, "ALLOW_DNS_OVERRIDE", False)
     params, _, _ = guardrails.sanitize_params({"url": "https://x.test",
                                                "dns_host": "x.test",
-                                               "dns_ip": "10.0.0.9",
+                                               "dns_ip": "203.0.113.9",
                                                "block_patterns": "*ads*"})
     cfg = scanconfig.ScanConfig.from_dict(params["scan_config"])
     assert cfg.dns_ip == "" and cfg.dns_host == ""

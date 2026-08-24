@@ -39,7 +39,7 @@ SETTINGS = {
     "device_profile": "pixel_7", "viewport_width": 480, "viewport_height": 900,
     "dpr": 2, "user_agent": "AuditBot/2.0",
     "block_patterns": "*doubleclick.net*\n*/ads/*",
-    "dns_host": "staging.x.test", "dns_ip": "10.0.0.9",
+    "dns_host": "staging.x.test", "dns_ip": "203.0.113.9",
 }
 
 # What a browser would post if it sent the whole form, sign-in fields and all.
@@ -100,7 +100,7 @@ def test_a_preset_comes_back_with_every_field_it_was_saved_with(store):
     assert reloaded.settings["user_agent"] == "AuditBot/2.0"
     assert reloaded.settings["block_patterns"] == ["*doubleclick.net*", "*/ads/*"]
     assert (reloaded.settings["dns_host"], reloaded.settings["dns_ip"]) \
-        == ("staging.x.test", "10.0.0.9")
+        == ("staging.x.test", "203.0.113.9")
 
 
 def test_applying_a_reloaded_preset_configures_the_scan_it_describes(store):
@@ -121,7 +121,7 @@ def test_applying_a_reloaded_preset_configures_the_scan_it_describes(store):
     cfg = scanconfig.ScanConfig.from_dict(params["scan_config"])
     assert cfg.throttling == "3g" and cfg.device_profile == "pixel_7"
     assert cfg.block_patterns == ("*doubleclick.net*", "*/ads/*")
-    assert cfg.host_rules() == "MAP staging.x.test 10.0.0.9"
+    assert cfg.host_rules() == "MAP staging.x.test 203.0.113.9"
     assert cfg.blocked("https://ad.doubleclick.net/x.gif")
 
 
