@@ -2,9 +2,10 @@
 """
 Scan configuration - what the browser looks and feels like
 ==========================================================
-Connection throttling, device emulation, viewport and User-Agent: the knobs
-that decide *under what conditions* a page is measured. Nothing here is
-secret; credentials live in `scanauth.py` and never pass through this module.
+Connection throttling, device emulation, viewport, User-Agent, a URL block
+list and a DNS override: the knobs that decide *under what conditions* a page
+is measured. Nothing here is secret; credentials live in `scanauth.py` and
+never pass through this module.
 
 Two rules govern everything below:
 
@@ -18,12 +19,15 @@ Two rules govern everything below:
 
 Every value a client sends is clamped here, the same way `guardrails` clamps
 page counts: a viewport is bounded, a User-Agent is stripped of anything that
-could inject a second HTTP header, and an unknown preset id falls back to the
-default rather than raising.
+could inject a second HTTP header, a block pattern cannot carry whitespace, a
+DNS override must parse as a real hostname and a real IP address, and an
+unknown preset id falls back to the default rather than raising.
 """
 
+import ipaddress
 import re
 from collections import OrderedDict, namedtuple
+from urllib.parse import urlparse
 
 # --------------------------------------------------------------------------
 # connection throttling
@@ -110,6 +114,93 @@ def clean_user_agent(raw):
     return ua[:MAX_UA_LENGTH]
 
 
+# --------------------------------------------------------------------------
+# blocked requests
+# --------------------------------------------------------------------------
+# A block list is a list of URL patterns - `*doubleclick.net*`, `*/ads/*`,
+# `*.gif` - that must not load while the page is measured. Chrome enforces it
+# for the Lighthouse audits (`--blocked-url-patterns`, which is
+# Network.setBlockedURLs underneath) and the Playwright runners enforce it with
+# request interception; both abort the request rather than let it complete, so
+# a blocked third party costs the page nothing at all.
+#
+# The pattern language is deliberately the one Lighthouse already speaks: a
+# plain substring, with `*` standing for "any run of characters". `ads` and
+# `*ads*` therefore mean the same thing, which is what a person typing a domain
+# into the box expects.
+
+MAX_BLOCK_PATTERNS = 40
+MAX_PATTERN_LENGTH = 200
+
+# A pattern is matched against a URL, which has no whitespace in it, and is put
+# on a command line - so whitespace and control characters are removed rather
+# than quoted.
+_PATTERN_STRIP = re.compile(r"[\s\x00-\x1f\x7f]")
+_PATTERN_SPLIT = re.compile(r"[\n\r,]")
+
+
+def clean_patterns(raw):
+    """A block list from a textarea, a comma-separated field or a JSON list.
+
+    Order is kept (it is the order the user typed), duplicates are dropped, and
+    the list is bounded: a client cannot hand Chrome ten thousand patterns.
+    """
+    items = raw if isinstance(raw, (list, tuple)) else _PATTERN_SPLIT.split(str(raw or ""))
+    out = []
+    for item in items:
+        pattern = _PATTERN_STRIP.sub("", str(item or ""))[:MAX_PATTERN_LENGTH]
+        if pattern and pattern not in out:
+            out.append(pattern)
+        if len(out) >= MAX_BLOCK_PATTERNS:
+            break
+    return tuple(out)
+
+
+def pattern_matcher(patterns):
+    """A compiled `re` for `patterns`, or None when there are none.
+
+    `*` is the only metacharacter; everything else is literal, so a pattern
+    containing `?`, `.` or `+` matches those characters and nothing else.
+    Matching is a search, not a full match - `ads` blocks any URL containing it.
+
+    The same rule is implemented in `scan_intercept.js` for the Playwright
+    runners; the two are pinned to each other by the tests.
+    """
+    if not patterns:
+        return None
+    alternatives = "|".join(re.escape(p).replace(r"\*", ".*") for p in patterns)
+    return re.compile(alternatives, re.IGNORECASE)
+
+
+# --------------------------------------------------------------------------
+# DNS override
+# --------------------------------------------------------------------------
+# "Test the staging box before the DNS is switched": the scan resolves one
+# hostname to an IP address of the user's choosing, for the length of the scan
+# and nowhere else. It is Chrome's own --host-resolver-rules, so the request
+# still carries the real Host header, the real SNI and the real cookies - only
+# the address the connection goes to changes.
+
+_HOSTNAME = re.compile(
+    r"^(?=.{1,253}$)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?"
+    r"(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$")
+
+
+def clean_host(raw):
+    """A hostname safe to put in a resolver rule, or ""."""
+    host = _UA_STRIP.sub("", str(raw or "")).strip().lower().strip(".")
+    return host if _HOSTNAME.match(host) else ""
+
+
+def clean_ip(raw):
+    """An IPv4/IPv6 address in its canonical form, or "" if it is not one."""
+    text = _UA_STRIP.sub("", str(raw or "")).strip().strip("[]")
+    try:
+        return str(ipaddress.ip_address(text))
+    except ValueError:
+        return ""
+
+
 def _num(raw, default=0.0):
     try:
         return float(str(raw).strip())
@@ -144,11 +235,12 @@ class ScanConfig:
     """
 
     __slots__ = ("throttling", "down_kbps", "up_kbps", "latency_ms",
-                 "device_profile", "width", "height", "dpr", "user_agent")
+                 "device_profile", "width", "height", "dpr", "user_agent",
+                 "block_patterns", "dns_host", "dns_ip")
 
     def __init__(self, throttling=DEFAULT_THROTTLING, down_kbps=0, up_kbps=0,
                  latency_ms=0, device_profile="", width=0, height=0, dpr=0,
-                 user_agent=""):
+                 user_agent="", block_patterns=(), dns_host="", dns_ip=""):
         self.throttling = throttling if throttling in THROTTLING else DEFAULT_THROTTLING
         self.down_kbps = _clamp_int(down_kbps, MIN_KBPS, MAX_KBPS)
         self.up_kbps = _clamp_int(up_kbps, MIN_KBPS, MAX_KBPS)
@@ -158,6 +250,9 @@ class ScanConfig:
         self.height = _clamp_int(height, MIN_VIEWPORT, MAX_VIEWPORT)
         self.dpr = _clamp_float(dpr, MIN_DPR, MAX_DPR)
         self.user_agent = clean_user_agent(user_agent)
+        self.block_patterns = clean_patterns(block_patterns)
+        self.dns_host = clean_host(dns_host)
+        self.dns_ip = clean_ip(dns_ip)
         if self.throttling == "custom" and not (self.down_kbps or self.up_kbps
                                                 or self.latency_ms):
             # "Custom" with nothing filled in is not a configuration.
@@ -177,6 +272,9 @@ class ScanConfig:
             height=get("viewport_height"),
             dpr=get("dpr"),
             user_agent=get("user_agent"),
+            block_patterns=get("block_patterns"),
+            dns_host=get("dns_host"),
+            dns_ip=get("dns_ip"),
         )
 
     @classmethod
@@ -186,7 +284,22 @@ class ScanConfig:
     def as_dict(self):
         """Plain values, safe to persist, log or send back to the browser -
         there is nothing secret in a ScanConfig."""
-        return {name: getattr(self, name) for name in self.__slots__}
+        data = {name: getattr(self, name) for name in self.__slots__}
+        data["block_patterns"] = list(self.block_patterns)   # JSON has no tuple
+        return data
+
+    def for_url(self, url):
+        """This configuration as it applies to `url`.
+
+        A DNS override entered as an IP alone means "the site I am scanning",
+        so the hostname is filled in from the URL here - once, where the URL is
+        known - and every flag built below is then URL-independent.
+        """
+        if not self.dns_ip or self.dns_host:
+            return self
+        data = self.as_dict()
+        data["dns_host"] = urlparse(url).hostname or ""
+        return ScanConfig(**data)
 
     def __eq__(self, other):
         return isinstance(other, ScanConfig) and self.as_dict() == other.as_dict()
@@ -216,9 +329,49 @@ class ScanConfig:
                     or self.dpr or self.user_agent)
 
     @property
+    def blocks(self):
+        """True when some requests are to be blocked during the scan."""
+        return bool(self.block_patterns)
+
+    @property
+    def overrides_dns(self):
+        """True when a hostname is pinned to an address for this scan.
+
+        Both halves are needed: an address with no host to attach it to is not
+        an override, and `for_url` is what supplies the host when the user gave
+        only the address.
+        """
+        return bool(self.dns_ip and self.dns_host)
+
+    @property
+    def intercepts(self):
+        """True when the browser's own networking is being altered."""
+        return self.blocks or bool(self.dns_ip)
+
+    @property
     def is_default(self):
         """Nothing was configured - the pipeline runs its original commands."""
-        return self.throttling == DEFAULT_THROTTLING and not self.emulates
+        return (self.throttling == DEFAULT_THROTTLING and not self.emulates
+                and not self.intercepts)
+
+    def blocked(self, url):
+        """True when `url` is one this scan refuses to load.
+
+        The pattern language is Lighthouse's, and the browsers do the real
+        blocking - this is the same decision, available to Python for the log
+        and for the tests.
+        """
+        matcher = pattern_matcher(self.block_patterns)
+        return bool(matcher and matcher.search(str(url or "")))
+
+    def host_rules(self):
+        """Chrome's `--host-resolver-rules` value for this scan, or "".
+
+        `MAP <host> <address>` changes only where the connection goes: the
+        request still carries the real host name, so the site sees the same
+        Host header, certificate name and cookies it always would.
+        """
+        return f"MAP {self.dns_host} {self.dns_ip}" if self.overrides_dns else ""
 
     def family(self, device):
         """`desktop` or `mobile` for this scan: a chosen profile wins over the
@@ -255,6 +408,10 @@ class ScanConfig:
         bits.append(f"connection {THROTTLING[self.throttling].label}")
         if self.agent():
             bits.append("custom User-Agent")
+        if self.blocks:
+            bits.append(f"blocking {len(self.block_patterns)} URL pattern(s)")
+        if self.overrides_dns:
+            bits.append(f"{self.dns_host} resolved to {self.dns_ip}")
         return ", ".join(bits)
 
     # -- command-line flags ---------------------------------------------
@@ -264,7 +421,13 @@ class ScanConfig:
         With nothing configured this is exactly the `--preset=desktop`/nothing
         the pipeline has always passed.
         """
-        return self._emulation_flags(device) + self._throttling_flags()
+        return (self._emulation_flags(device) + self._throttling_flags()
+                + self._blocking_flags())
+
+    def _blocking_flags(self):
+        """Lighthouse blocks these itself, through Chrome's own network layer -
+        one flag per pattern, so a pattern needs no quoting."""
+        return [f"--blocked-url-patterns={p}" for p in self.block_patterns]
 
     def _emulation_flags(self, device):
         family = self.family(device)
@@ -311,6 +474,35 @@ class ScanConfig:
         flags.append(f"--throttling.cpuSlowdownMultiplier={preset.cpu}")
         return flags
 
+    def chrome_flags(self):
+        """Extra flags for the Chrome that Lighthouse launches, or [].
+
+        The value of a resolver rule contains spaces, and Lighthouse splits its
+        `--chrome-flags` string into arguments the way a shell would - so the
+        value is quoted here, where the rule is built, rather than left for
+        every caller to remember.
+        """
+        rules = self.host_rules()
+        return [f'--host-resolver-rules="{rules}"'] if rules else []
+
+    def crawl_config(self):
+        """Configuration for `unlighthouse-ci`, or {}.
+
+        The crawler's CLI knows nothing about blocked URLs or resolver rules,
+        but it does read an `unlighthouse.config.js` from the directory it runs
+        in, and it passes both of these straight through to the Lighthouse and
+        the browser it drives. Written only when there is something to say, so
+        an ordinary scan runs in a directory with no config file at all - the
+        crawl it has always been.
+        """
+        config = {}
+        if self.block_patterns:
+            config["lighthouseOptions"] = {"blockedUrlPatterns": list(self.block_patterns)}
+        rules = self.host_rules()
+        if rules:
+            config["puppeteerOptions"] = {"args": [f"--host-resolver-rules={rules}"]}
+        return config
+
     def crawl_flags(self, device):
         """Flags for `unlighthouse-ci`, whose CLI is much smaller: it knows
         desktop/mobile, one User-Agent, and whether to throttle at all."""
@@ -325,8 +517,18 @@ class ScanConfig:
         return flags
 
     def browser_context(self):
-        """Playwright context options, for the scanners that drive a browser
-        directly (the login step, the axe runner). Empty when nothing is set."""
+        """Options for the scanners that drive a browser directly (the login
+        step, the axe runner). Empty when nothing is set.
+
+        Mostly Playwright `newContext()` options, plus two keys the runners
+        lift out because they are not context options at all:
+
+          `blockPatterns` - installed as a request-interception route, so a
+                            blocked request is aborted before it is issued;
+          `launchArgs`    - flags for the browser process itself, which is why
+                            the DNS override has to be here rather than in the
+                            context: resolution happens below the context.
+        """
         options = {}
         width, height, dpr = self.screen("")
         if width and height:
@@ -336,6 +538,11 @@ class ScanConfig:
         agent = self.agent()
         if agent:
             options["userAgent"] = agent
+        if self.block_patterns:
+            options["blockPatterns"] = list(self.block_patterns)
+        rules = self.host_rules()
+        if rules:
+            options["launchArgs"] = [f"--host-resolver-rules={rules}"]
         return options
 
 

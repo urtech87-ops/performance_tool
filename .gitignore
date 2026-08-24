@@ -9,6 +9,8 @@ sample-report.pdf
 *.print.html
 vendor/pagedjs/*.js
 
-# Local virtualenv and the generated domain-verification secret
+# Local virtualenv, the generated domain-verification secret, and the saved
+# scan presets (per browser session; scan settings only, never credentials)
 .venv/
 .verify_secret
+presets/

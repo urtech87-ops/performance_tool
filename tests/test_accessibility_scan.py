@@ -89,11 +89,14 @@ def test_run_axe_keeps_the_raw_result_in_the_work_dir(fake_runner, tmp_path):
 
 def test_the_runner_script_is_headless_and_relaxes_certs_and_the_sandbox():
     """Everything the ChromeDriver command line used to carry now lives in the
-    runner script, since Playwright launches the browser itself."""
+    runner, since Playwright launches the browser itself - the launch flags in
+    scan_intercept.js, which both Playwright runners share."""
     js = a11y.RUNNER_JS.read_text(encoding="utf-8")
+    shared = (a11y.RUNNER_JS.parent / "scan_intercept.js").read_text(encoding="utf-8")
     assert "headless: true" in js
     assert "ignoreHTTPSErrors: true" in js
-    assert "--no-sandbox" in js and "--ignore-certificate-errors" in js
+    assert "launchArgs(" in js
+    assert "--no-sandbox" in shared and "--ignore-certificate-errors" in shared
 
 
 def test_run_axe_relaxes_node_tls_and_points_node_at_the_runner_packages(fake_runner, tmp_path):

@@ -113,6 +113,15 @@ class Settings:
         # handed third-party passwords at all can refuse them outright.
         self.ALLOW_SCAN_AUTH = _bool(env.get("ALLOW_SCAN_AUTH"), True)
 
+        # ---- DNS override ----------------------------------------------
+        # Pinning a hostname to an address is what lets a staging server be
+        # measured before its DNS is switched. It also lets a request be
+        # pointed at an address the requester chose, which on a public
+        # deployment is a way to reach hosts the internet cannot - so a
+        # deployment that takes scans from strangers can refuse it outright,
+        # exactly as it can refuse to be handed credentials.
+        self.ALLOW_DNS_OVERRIDE = _bool(env.get("ALLOW_DNS_OVERRIDE"), True)
+
         # ---- domain-ownership gate for deep multi-page scans -----------
         self.REQUIRE_DOMAIN_VERIFICATION = _bool(
             env.get("REQUIRE_DOMAIN_VERIFICATION"), False)

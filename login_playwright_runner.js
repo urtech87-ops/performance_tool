@@ -24,9 +24,14 @@
  *     "submitSelector": "button[type=submit]",
  *     "username": "...", "password": "...",
  *     "timeout": 60,                     // seconds for the whole login
- *     "context": { ... },                // Playwright newContext() options
+ *     "context": { ... },                // Playwright newContext() options,
+ *                                        // plus blockPatterns / launchArgs
  *     "httpCredentials": {"username": "...", "password": "..."}
  *   }
+ *
+ * The sign-in runs under the same conditions as the scan that follows it: the
+ * same blocked URLs and the same DNS override, so the session it produces
+ * belongs to the server the scan is about to measure.
  *
  * Output contract, identical in spirit to axe_playwright_runner.js:
  *   - stdout carries exactly one line: RESULT_MARKER followed by
@@ -35,6 +40,8 @@
  *     password: only selectors, URLs and the browser's own error text.
  *   - exit 0 means "the login ran"; non-zero means it did not.
  */
+
+const { installBlocking, launchArgs } = require('./scan_intercept.js');
 
 const RESULT_MARKER = '__LOGIN_RESULT__';
 const DEFAULT_TIMEOUT_S = 60;
@@ -82,12 +89,16 @@ async function main() {
   const seconds = Number(config.timeout);
   const timeout = Math.max(1, Number.isFinite(seconds) ? seconds : DEFAULT_TIMEOUT_S) * 1000;
 
+  const {
+    blockPatterns, launchArgs: extraArgs, ...contextOptions
+  } = config.context || {};
+
   const { chromium } = load('playwright');
   let browser;
   try {
     browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-gpu', '--ignore-certificate-errors'],
+      args: launchArgs(extraArgs),
     });
   } catch (err) {
     die(
@@ -97,11 +108,12 @@ async function main() {
   }
 
   try {
-    const options = Object.assign({ ignoreHTTPSErrors: true }, config.context || {});
+    const options = Object.assign({ ignoreHTTPSErrors: true }, contextOptions);
     // Basic auth is applied to the login request too: plenty of sites put a
     // form behind an .htpasswd wall on a staging box.
     if (config.httpCredentials) options.httpCredentials = config.httpCredentials;
     const context = await browser.newContext(options);
+    await installBlocking(context, blockPatterns);
     if (Array.isArray(config.cookies) && config.cookies.length) {
       // Cookies the user pasted (a consent banner, usually) are in place
       // before the login form is ever loaded.
