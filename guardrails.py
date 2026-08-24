@@ -9,7 +9,10 @@ Two things stand between an anonymous request and a worker:
     sends can never make a scan bigger than the deployment allows. Its output
     is also the only thing that gets persisted about a scan, which is why no
     credential may ever appear in it - see `extract_credentials`, which is a
-    separate door for exactly that reason.
+    separate door for exactly that reason. It is also where a request is
+    refused outright: a DNS override aimed at an address only the scanning
+    host can reach is the one scan parameter that is not merely clamped, and
+    `_scan_config` says why.
   * `RateLimiter`     - per-IP and per-session budgets: scans per hour and
     concurrent scans per client.
 
@@ -117,6 +120,10 @@ def sanitize_params(args):
     categories = [c for c in VALID_CATEGORIES if c in raw_cats]  # canonical order, junk dropped
     standards = re.findall(r"[a-z0-9_]+", _csv(get("standards")).lower())[:40]
 
+    scan_config, error = _scan_config(get)
+    if error:
+        return None, error, []
+
     params = {
         "url": url,
         "device": "desktop" if get("device") == "desktop" else "mobile",
@@ -132,25 +139,43 @@ def sanitize_params(args):
         # URL block list and the DNS override. All clamped by scanconfig, and
         # all of it public: this dict is queued, stored in the job record and
         # echoed back to the browser.
-        "scan_config": _scan_config(get).as_dict(),
+        "scan_config": scan_config.as_dict(),
     }
     return params, None, capped
 
 
 def _scan_config(get):
-    """The browser conditions for one request.
+    """The browser conditions for one request, as `(config, error)`.
 
-    The only judgement made here is the deployment's own: where
-    ALLOW_DNS_OVERRIDE is off, the DNS fields are dropped before anything is
-    built from them, so a client cannot point a scan at an address of its
-    choosing on a server that does not offer that.
+    Two judgements are made here, and both are the deployment's rather than
+    the client's:
+
+      * Where ALLOW_DNS_OVERRIDE is off, the DNS fields are **dropped** before
+        anything is built from them - the deployment does not offer the
+        feature at all, so there is nothing to complain about.
+      * Where it is on, an address inside the ranges that only mean "this
+        machine" or "this network" is **refused**, with a message. That is the
+        difference between a staging server and the scanner being used as a
+        proxy into its own network - the metadata endpoint at 169.254.169.254
+        included. Dropping it silently would be worse than refusing: a scan
+        that quietly measured the public site instead of the staging box is a
+        wrong answer delivered as a right one.
+
+    `ALLOW_PRIVATE_DNS_TARGETS=1` is the escape hatch for the person whose
+    staging box really is on 10.x. It is never available in public mode.
     """
     cfg = scanconfig.ScanConfig.from_request(get)
     if cfg.dns_ip and not settings.ALLOW_DNS_OVERRIDE:
         data = cfg.as_dict()
         data["dns_host"] = data["dns_ip"] = ""
-        cfg = scanconfig.ScanConfig(**data)
-    return cfg
+        return scanconfig.ScanConfig(**data), None
+    if cfg.targets_private_network and not settings.ALLOW_PRIVATE_DNS_TARGETS:
+        return None, (
+            f"{cfg.dns_ip} is a private, loopback or link-local address. A DNS "
+            "override may only point at an address reachable from the public "
+            "internet. (A deployment that really does scan its own network can "
+            "set ALLOW_PRIVATE_DNS_TARGETS=1, which public mode does not allow.)")
+    return cfg, None
 
 
 def extract_credentials(body):

@@ -293,7 +293,12 @@ def test_credentials_that_expired_in_the_queue_are_reported_not_ignored():
 
 def test_credentials_are_never_accepted_from_a_query_string(monkeypatch):
     """The GET route is the one that lands in access logs and history, so it
-    has no door for a credential at all."""
+    has no door for a credential at all.
+
+    It refuses the request rather than scanning without them: a scan that
+    quietly ran as an anonymous visitor would hand back a report of the login
+    page, which is a wrong answer delivered as a right one.
+    """
     calls = []
     monkeypatch.setattr(dashboard, "run_pipeline",
                         lambda *a, **kw: calls.append(kw) or "run-folder")
@@ -301,7 +306,21 @@ def test_credentials_are_never_accepted_from_a_query_string(monkeypatch):
     dashboard.app.config["TESTING"] = True
     client = dashboard.app.test_client()
     query = "&".join(f"{k}={v}" for k, v in FIELDS.items() if k != "login_url")
-    client.get(f"/scan?url=https://x.test&categories=performance&{query}")
+    resp = client.get(f"/scan?url=https://x.test&categories=performance&{query}")
+    assert resp.headers["X-Scan-Rejected"] == "invalid"
+    assert "POST /scan" in resp.get_data(as_text=True)
+    assert calls == []                    # and nothing was scanned either way
+
+
+def test_a_query_string_without_credentials_still_scans(monkeypatch):
+    """The refusal above is about the secret fields, not about GET."""
+    calls = []
+    monkeypatch.setattr(dashboard, "run_pipeline",
+                        lambda *a, **kw: calls.append(kw) or "run-folder")
+    monkeypatch.setattr(dashboard, "run_artifacts", lambda name: [])
+    dashboard.app.config["TESTING"] = True
+    client = dashboard.app.test_client()
+    client.get("/scan?url=https://x.test&categories=performance")
     assert calls[0]["credentials"] is None
 
 

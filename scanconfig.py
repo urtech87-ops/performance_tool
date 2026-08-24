@@ -201,6 +201,74 @@ def clean_ip(raw):
         return ""
 
 
+# The ranges a scan target may not be pointed at. An override that resolves
+# into one of these is not "measure my staging box": it is the scanner being
+# used to reach something only the scanning host can reach - its own loopback,
+# the private network it sits on, or the cloud metadata service at
+# 169.254.169.254, which hands out credentials to anything that asks.
+#
+# Listed explicitly rather than leaning on `ipaddress.is_private`, which also
+# covers the documentation ranges (192.0.2/24, 198.51.100/24, 203.0.113/24) -
+# those are not reachable and not a way in, and refusing them would only make
+# the examples in the README a lie.
+_BLOCKED_V4 = tuple(ipaddress.ip_network(n) for n in (
+    "0.0.0.0/8",          # "this network" - and 0.0.0.0, which means localhost
+    "10.0.0.0/8",         # RFC1918
+    "100.64.0.0/10",      # carrier-grade NAT
+    "127.0.0.0/8",        # loopback
+    "169.254.0.0/16",     # link-local, incl. the 169.254.169.254 metadata IP
+    "172.16.0.0/12",      # RFC1918
+    "192.0.0.0/24",       # IETF protocol assignments
+    "192.168.0.0/16",     # RFC1918
+    "198.18.0.0/15",      # benchmarking
+    "224.0.0.0/4",        # multicast
+    "240.0.0.0/4",        # reserved, incl. 255.255.255.255
+))
+
+_BLOCKED_V6 = tuple(ipaddress.ip_network(n) for n in (
+    "::/128",             # unspecified
+    "::1/128",            # loopback
+    "fc00::/7",           # unique local
+    "fe80::/10",          # link-local
+    "ff00::/8",           # multicast
+))
+
+
+def _unwrap_v6(ip):
+    """The IPv4 address an IPv6 address really points at, or None.
+
+    `::ffff:10.0.0.1`, a 6to4 address and a Teredo address all reach an IPv4
+    host, so classifying them by their IPv6 form alone would let 10.0.0.1
+    through in a different spelling.
+    """
+    for attr in ("ipv4_mapped", "sixtofour", "teredo"):
+        value = getattr(ip, attr, None)
+        if attr == "teredo" and value:
+            value = value[0]        # (server, client) - the server is the peer
+        if value:
+            return value
+    return None
+
+
+def is_private_target(raw):
+    """True when `raw` is an address a scan must not be pointed at.
+
+    Takes anything `clean_ip` accepts. Text that is not an address at all is
+    not a private target - it is not a target, and `clean_ip` has already
+    dropped it.
+    """
+    text = clean_ip(raw)
+    if not text:
+        return False
+    ip = ipaddress.ip_address(text)
+    if ip.version == 6:
+        mapped = _unwrap_v6(ip)
+        if mapped is not None and is_private_target(str(mapped)):
+            return True
+        return any(ip in net for net in _BLOCKED_V6)
+    return any(ip in net for net in _BLOCKED_V4)
+
+
 def _num(raw, default=0.0):
     try:
         return float(str(raw).strip())
@@ -342,6 +410,14 @@ class ScanConfig:
         only the address.
         """
         return bool(self.dns_ip and self.dns_host)
+
+    @property
+    def targets_private_network(self):
+        """True when the DNS override points at an address that only means
+        something on the scanning host's own network - see
+        `is_private_target`. The decision of what to do about it belongs to
+        the deployment, so it is made in `guardrails`, not here."""
+        return is_private_target(self.dns_ip)
 
     @property
     def intercepts(self):

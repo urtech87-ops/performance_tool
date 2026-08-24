@@ -849,6 +849,8 @@ def healthz():
 def api_limits():
     """What this deployment allows - the UI shows the caps up front instead of
     silently shrinking a scan the user asked for."""
+    storage_ok, storage_reason = queue_backend().credential_storage_ok()
+    auth_enabled = settings.ALLOW_SCAN_AUTH and storage_ok
     return jsonify({
         "max_pages": settings.CAP_MAX_PAGES,
         "samples": settings.CAP_SAMPLES,
@@ -859,8 +861,17 @@ def api_limits():
         "scan_timeout": settings.SCAN_TIMEOUT,
         "verification_required": settings.REQUIRE_DOMAIN_VERIFICATION,
         "rate_limit_enabled": settings.RATE_LIMIT_ENABLED,
-        "scan_auth_enabled": settings.ALLOW_SCAN_AUTH,
+        # A field the deployment will only refuse is not offered. `mode` is
+        # the reason for every `false` below it, so the UI can say *why* a
+        # control is missing instead of just leaving a hole in the form.
+        "mode": settings.DEPLOYMENT_MODE,
+        "scan_auth_enabled": auth_enabled,
+        "scan_auth_disabled_reason": "" if auth_enabled else (
+            storage_reason or "Authenticated scanning is turned off on this "
+                              "deployment (ALLOW_SCAN_AUTH)."),
+        "auth_requires_verification": settings.REQUIRE_VERIFIED_DOMAIN_FOR_AUTH,
         "dns_override_enabled": settings.ALLOW_DNS_OVERRIDE,
+        "private_dns_targets_enabled": settings.ALLOW_PRIVATE_DNS_TARGETS,
         "max_presets": scanpresets.MAX_PRESETS,
         "max_block_patterns": scanconfig.MAX_BLOCK_PATTERNS,
     })
@@ -999,10 +1010,27 @@ def _admit(source, credentials, sid):
     except guardrails.RateLimitError as exc:
         raise Rejected(exc.reason, exc.message)
 
-    allowed, detail = verification.gate(guardrails.registrable_domain(params["url"]),
+    domain = guardrails.registrable_domain(params["url"])
+    allowed, detail = verification.gate(domain,
                                         guardrails.is_multipage_scan(params))
     if not allowed:
         raise Rejected("unverified", detail["message"], {"verification": detail})
+
+    # Somebody's password aimed at somebody's site: in public mode that needs
+    # proof of ownership whatever the size of the scan, which is why this gate
+    # is separate from the one above rather than folded into it.
+    allowed, detail = verification.credential_gate(domain, bool(credentials))
+    if not allowed:
+        raise Rejected("unverified", detail["message"], {"verification": detail})
+
+    # And whether this queue may carry a credential at all - asked before a
+    # slot is taken, so a refusal costs the client nothing. The backend raises
+    # the same refusal from `enqueue` as a backstop, for any caller that does
+    # not come through here.
+    if credentials:
+        storage_ok, storage_reason = backend.credential_storage_ok()
+        if not storage_ok:
+            raise Rejected("invalid", storage_reason)
 
     job_id = jobqueue.new_job_id()
     limiter.reserve(keys, job_id)       # hold the slot before the job can start
@@ -1015,6 +1043,9 @@ def _admit(source, credentials, sid):
             "queue_full",
             f"All {backend.max_depth} queue slots are taken right now. "
             "Please try again shortly - nothing was lost.")
+    except jobqueue.CredentialsRefused as exc:
+        limiter.release(keys, job_id)
+        raise Rejected("invalid", str(exc))
     limiter.charge(keys, job_id)
     return job_id, keys, capped, params
 
@@ -1046,12 +1077,27 @@ def _stream_response(job_id, keys, capped, params):
 def scan():
     """Admit a scan and stream it, in one request.
 
-    The original entry point, unchanged and still the whole API for an
-    unauthenticated scan. It reads the query string, which is precisely why it
-    never accepts credentials: a query string is written to access logs, sent
-    in `Referer` headers, and kept in the user's own history. Anything secret
-    comes in through POST below.
+    The original entry point, kept: it is the whole API for an unauthenticated
+    scan from a script or a `curl`, and dropping it would break every caller
+    that has one for the sake of a door that is not actually open. It is not a
+    second admission path - it hands the query string to the same `_admit` the
+    POST uses, so `sanitize_params`, the caps, the rate limiter, both
+    verification gates and the SSRF check are one implementation, reached two
+    ways. `tests/test_scan_endpoint_parity.py` pins that.
+
+    The one thing it will not do is take a credential. A query string is
+    written to access logs, sent in `Referer` headers and kept in the user's
+    own history, so there is no door for one here - and a request that tries
+    is *told*, rather than quietly scanned as an anonymous visitor and handed
+    back a report of a login page.
     """
+    if any(str(request.args.get(name) or "").strip()
+           for name in scanauth.SECRET_FIELDS):
+        return _rejection(
+            "invalid",
+            "Sign-in details cannot be sent in a URL - a query string reaches "
+            "access logs, Referer headers and your own browser history. Submit "
+            "them with POST /scan instead.")
     try:
         job_id, keys, capped, params = _admit(request.args, None, session_id())
     except Rejected as exc:
@@ -1535,6 +1581,7 @@ PAGE = """<!DOCTYPE html>
         <div class="atitle"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Sign in to the site</div>
         <div class="ahint">For staging servers, member areas and anything behind a password. Fill in only
           what the site needs &mdash; all three methods can be combined.</div>
+        <div class="ahint" id="authnote" style="display:none"></div>
         <div class="privacy">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M12 3l7 4v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
           <span><strong>These fields are never stored.</strong> They are sent once, over this
@@ -1931,6 +1978,16 @@ PAGE = """<!DOCTYPE html>
       // don't offer fields whose contents it would only refuse.
       var box = document.querySelector(".agroup.secret");
       if(box){ box.style.display = "none"; }
+    } else if(j.auth_requires_verification){
+      // Offered, but only for a domain you have proved you own. Say so where
+      // the fields are, rather than letting the scan be refused after the
+      // person has typed a password into them.
+      var note = document.getElementById("authnote");
+      if(note){
+        note.textContent = "This deployment accepts sign-in details only for " +
+                           "a domain you have verified ownership of.";
+        note.style.display = "block";
+      }
     }
   }).catch(function(){ /* the caps still apply server-side */ });
 

@@ -14,8 +14,15 @@ The token is an HMAC of the domain, so it is stable, unguessable, and needs no
 storage to hand out. Successful checks are cached (in Redis when available) for
 VERIFY_TTL so a verified domain is not re-fetched on every scan.
 
-Off by default: an internal/local deployment leaves the gate closed and nothing
-in here ever runs.
+`credential_gate` is the second, stricter gate built on the same token: where
+`REQUIRE_VERIFIED_DOMAIN_FOR_AUTH` is on - which `DEPLOYMENT_MODE=public`
+forces - a scan carrying HTTP auth, a cookie jar or a form login needs the
+same proof, whatever its size. The first gate is about what a crawl costs this
+deployment; this one is about whose password is being handed over, which is
+why one page is gated exactly like twenty.
+
+Off by default: an internal/local deployment leaves both gates closed and
+nothing in here ever runs.
 """
 
 import hashlib
@@ -189,4 +196,30 @@ def gate(domain, multipage):
     detail["message"] = (
         f"A multi-page audit of {domain} needs proof you control the domain. "
         f"{detail['how']} A single-page scan (Max pages = 1) runs without it.")
+    return False, detail
+
+
+def credential_gate(domain, credentialed):
+    """Decide whether a scan carrying *credentials* may proceed.
+
+    A separate gate from `gate` above, and a stricter one: that one is about
+    what a crawl costs this deployment, this one is about who is being handed
+    somebody's password. Size does not enter into it, so a single-page scan
+    with a cookie jar is gated exactly like a 20-page one.
+
+    On in public mode, off by default locally, where the person scanning and
+    the person who owns the site are the same person.
+
+    Returns (allowed, detail), the same shape as `gate`.
+    """
+    if not settings.REQUIRE_VERIFIED_DOMAIN_FOR_AUTH or not credentialed:
+        return True, None
+    if is_verified(domain):
+        return True, None
+    detail = instructions(domain)
+    detail["message"] = (
+        f"Signing in to {domain} needs proof you control the domain: this "
+        f"deployment does not take credentials for a site on a stranger's "
+        f"say-so. {detail['how']} A scan without sign-in details runs without "
+        f"it.")
     return False, detail

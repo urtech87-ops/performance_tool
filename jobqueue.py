@@ -45,6 +45,12 @@ are none of those things, so they never go in it.
     to its RDB/AOF before the worker takes it. Run the queue's Redis with
     persistence off (`--save "" --appendonly no`) if you accept credentials,
     or set ALLOW_SCAN_AUTH=0 and don't.
+
+    In public mode that stops being advice: `PERSIST_SCAN_AUTH` is forced off,
+    and `credential_storage_ok()` then refuses credentials unless the server
+    itself reports both RDB and AOF disabled. A deployment that cannot prove
+    it - a managed Redis with `CONFIG GET` locked down, say - is told so
+    rather than quietly writing somebody's password to a disk it does not own.
 """
 
 import json
@@ -61,6 +67,20 @@ TERMINAL = (DONE, FAILED, UNKNOWN)
 
 class QueueFull(Exception):
     """The queue is at MAX_QUEUE_DEPTH - the caller should be told to retry."""
+
+
+class CredentialsRefused(Exception):
+    """This queue will not carry a credential - the message says why.
+
+    Raised rather than silently dropping them: a scan that quietly ran as an
+    anonymous visitor would report the login page as the site.
+    """
+
+
+# What a backend says when it will not take a credential. The message is the
+# operator's to act on, and is shown to the client as-is: it names a setting,
+# never a value anybody sent.
+CREDENTIALS_OK = (True, "")
 
 
 def new_job_id():
@@ -140,6 +160,11 @@ class InlineBackend:
         with self._cond:
             record = self._jobs.get(job_id)
             return record.pop("credentials", None) if record else None
+
+    def credential_storage_ok(self):
+        """Always. Nothing leaves this process, so there is no disk to reach:
+        the credential is an object in memory that the worker thread pops."""
+        return CREDENTIALS_OK
 
     # -- API ------------------------------------------------------------
     def depth(self):
@@ -235,6 +260,18 @@ class InlineLogSink:
 # Redis / RQ backend
 # --------------------------------------------------------------------------
 
+def _config_value(answer, name):
+    """One setting out of a `CONFIG GET` answer, or None when it is not in it.
+
+    redis-py hands back `{name: value}` with either half possibly bytes,
+    depending on how the connection was built.
+    """
+    for key, value in (answer or {}).items():
+        if (key.decode() if isinstance(key, bytes) else str(key)) == name:
+            return (value.decode() if isinstance(value, bytes) else str(value)).strip()
+    return None
+
+
 def _key(job_id, suffix=""):
     return f"scanjob:{job_id}{suffix}"
 
@@ -271,6 +308,7 @@ class RedisQueueBackend:
         self.ttl = settings.JOB_TTL
         self.queue = Queue(self.queue_name, connection=self.r,
                            default_timeout=self.timeout)
+        self._persistence = None      # unasked; see credential_storage_ok
 
     # -- API ------------------------------------------------------------
     def depth(self):
@@ -291,6 +329,9 @@ class RedisQueueBackend:
         # every web process, and neither is a place for someone's password.
         # This key outlives only the queue wait - see the module docstring.
         if credentials:
+            ok, reason = self.credential_storage_ok()
+            if not ok:
+                raise CredentialsRefused(reason)
             # Long enough for a realistic queue wait, short enough that a job
             # nobody ever runs does not leave a password sitting there. A job
             # that outlives it is told so rather than quietly scanning as an
@@ -331,6 +372,56 @@ class RedisQueueBackend:
             return scanauth.Credentials.from_payload(json.loads(raw))
         except ValueError:
             return scanauth.Credentials()
+
+    def credential_storage_ok(self):
+        """Whether a credential may be written to this Redis at all.
+
+        With `PERSIST_SCAN_AUTH` on (the local default) this is the behaviour
+        the queue has always had: the key is written, and keeping the server's
+        persistence off is the operator's business.
+
+        With it off - which public mode forces - the server has to *say* that
+        both RDB snapshots and AOF are disabled before a password is handed
+        to it. A Redis that will not answer the question does not get the
+        benefit of the doubt: the answer is no, with the reason, because the
+        alternative is somebody's password on a disk nobody meant to write it
+        to. Asked once per process and remembered - a running Redis does not
+        change its persistence between two scans, and this sits in the path of
+        every credentialed submission.
+        """
+        if settings.PERSIST_SCAN_AUTH:
+            return CREDENTIALS_OK
+        if self._persistence is None:
+            self._persistence = self._persistence_state()
+        state = self._persistence
+        if state == "off":
+            return CREDENTIALS_OK
+        if state == "unknown":
+            return False, ("This deployment will not accept sign-in details "
+                           "because it cannot confirm its queue's Redis has "
+                           "persistence disabled. Run Redis with --save \"\" "
+                           "--appendonly no, or scan without sign-in details.")
+        return False, ("This deployment will not accept sign-in details "
+                       "because its queue's Redis writes to disk. Run Redis "
+                       "with --save \"\" --appendonly no, or scan without "
+                       "sign-in details.")
+
+    def _persistence_state(self):
+        """"off", "on" or "unknown", from the server's own configuration.
+
+        "unknown" covers every way of not getting an answer: CONFIG disabled,
+        renamed or denied, and a server that answers without the setting in
+        it. Not answering is not the same as answering "no".
+        """
+        try:
+            save = _config_value(self.r.config_get("save"), "save")
+            appendonly = _config_value(self.r.config_get("appendonly"), "appendonly")
+        except Exception:                                          # noqa: BLE001
+            return "unknown"
+        if save is None or appendonly is None:
+            return "unknown"
+        # An empty `save` is "no RDB snapshots"; `appendonly no` is "no AOF".
+        return "off" if not save and appendonly.lower() == "no" else "on"
 
     def credentials_expected(self, job_id):
         """True when this job was queued with credentials.
